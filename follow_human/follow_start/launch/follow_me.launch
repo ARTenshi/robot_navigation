@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+
+  <include file="$(find navigation_start)/launch/navigation.launch" />
+
+  <group ns="hri">
+    <node name="leg_finder" pkg="leg_finder" type="leg_finder_node" output="screen" args="--hyp">
+      <param name="obst_xmin" value="0.0"/>
+      <param name="obst_xmax" value="0.15"/>
+      <param name="obst_ymin" value="-0.13"/>
+      <param name="obst_ymax" value="0.13"/>
+      <param name="obst_div" value="9"/>
+    </node>
+
+    <node name="human_follower" pkg="human_follower" type="human_follower_node" output="screen" args="--move_head --pot_fields">
+      <param name="distance" value="0.6"/>
+    </node>
+  </group>
+
+</launch>
