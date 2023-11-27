@@ -37,7 +37,7 @@
   <arg name="min_z" default="0.05"/>
   <arg name="max_z" default="1.00"/>
   
-  <node name="bypass_cartographer_map" pkg="bypass_map" type="bypass_map_node"/>
+  <node name="bypass_cartographer_map" pkg="bypass_cartographer_map" type="bypass_cartographer_map_node"/>
   
   <group ns="hardware">
     <node name="head" pkg="head" type="head_node" output="screen"/>
