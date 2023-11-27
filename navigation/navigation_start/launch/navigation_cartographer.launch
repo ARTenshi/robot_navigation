@@ -113,7 +113,7 @@
     <remap from="/map" to="/fixed_prohibition_layer_map"/>
   </node>
   
-  <node name="map_enhancer" pkg="augmented_gridmaps" type="augmented_gridmaps_node" output="screen">
+  <node name="map_enhancer" pkg="augment_gridmap_online" type="augment_gridmap_online_node" output="screen">
     <remap from="point_obstacle" to="/clicked_point"/>
     <param name="obstacle_radius" value="0.05" type="double"/>
     <param name="input_map" value="/fixed_prohibition_layer_map"/>
