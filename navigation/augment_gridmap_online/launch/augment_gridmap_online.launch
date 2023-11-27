@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <!--remap from="/map" to="/static_distance_map_ref"/-->
+
+  
+  <node name="map_enhancer" pkg="augment_gridmap_online" type="augment_gridmap_online_node" output="screen">
+    <remap from="point_obstacle" to="/clicked_point"/>
+    <param name="obstacle_radius" value="0.075" type="double"/>
+    <param name="input_map" value="/static_distance_map_ref"/>
+  </node>
+
+</launch>

@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+  <remap from="/static_obstacle_map_ref" to="/static_map"/>
+  <remap from="/static_map" to="/get_distance_map"/>
+  <remap from="/static_obstacle_map_ref" to="/get_distance_map"/>
+  
+  <remap from="/laser_2d_pose" to= "/global_pose"/>
+  <remap from="/cmd_vel" to="/hsrb/command_velocity"/>
+  <remap from="/initialpose" to="/laser_2d_correct_pose"/>  
+  
+  <node name="killer_node" pkg="killer_node" type="killer_node.py" output="screen"/>
+  <node name="fake_global_pose" pkg="killer_node" type="fake_global_pose.py" output="screen"/>
+  
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find navigation_start)/rviz/config.rviz"/>
+  
+  <arg name="prohibition_map_file"  default="$(find navigation_start)/maps/prohibition_maps/room_512/map.yaml"/>
+  <arg name="static_map_file"  default="$(find navigation_start)/maps/maps/room_512/map.yaml"/>
+  
+  <arg name="cmd_vel_name" default="/hsrb/command_velocity"/>
+  <arg name="laser_scan_topic" default="/hsrb/base_scan"/>
+  <arg name="point_cloud_topic" default="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
+  <arg name="point_cloud_topic2" default="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
+  <arg name="bumper_f_topic" default="hsrb/base_f_bumper_sensor"/>
+    
+  <arg name="use_lidar" default="True"/>
+  <arg name="use_sonars" default="False"/>
+  <arg name="use_point_cloud" default="True"/>
+  <arg name="use_point_cloud2" value="False"/>
+  <arg name="use_bumper" default="False"/>
+  
+  <arg name="cloud_downsampling" default="5"/>
+  <arg name="lidar_downsampling" default="1"/>
+  <arg name="cloud_points_threshold" default="100"/>
+  <arg name="lidar_points_threshold" default="20"/>
+  
+  <arg name="min_x" default="0.27"/>
+  <arg name="max_x" default="0.70"/>
+  <arg name="min_y" default="-0.25"/>
+  <arg name="max_y" default="0.25"/>
+  <arg name="min_z" default="0.05"/>
+  <arg name="max_z" default="1.00"/>
+
+  <group ns="hardware">
+    <node name="head" pkg="head" type="head_node" output="screen"/>
+    <node name="led" pkg="head" type="led_node" output="screen"/>
+    <node name="arm" pkg="arm" type="arm_node" output="screen"/>
+  </group>
+  
+  <node name="path_planner" pkg="path_planner" type="path_planner_node" output="screen">
+    <param name="diagonal_paths" value="False"/>
+  </node>
+  
+  <node name="simple_move"  pkg="simple_move"  type="simple_move_node"  output="screen">
+    <param name="max_linear_speed" value="0.8"/>
+    <param name="max_angular_speed" value="1.25"/>
+    <param name="control_alpha" value="0.2"/>
+    <param name="control_beta" value="0.8"/>
+    <param name="cmd_vel_name" value="$(arg cmd_vel_name)"/>
+  </node>
+  
+  <node name="obs_detector"  pkg="obstacle_detector"  type="obs_detect_node"  output="screen">
+    <param name="laser_scan_topic" value="$(arg laser_scan_topic)"/>
+    <param name="point_cloud_topic" value="$(arg point_cloud_topic)"/>
+    <param name="point_cloud_topic2" value="$(arg point_cloud_topic2)"/>
+    <param name="bumper_f_topic" value="$(arg bumper_f_topic)"/>
+    
+    <param name="use_lidar" value="$(arg use_lidar)"/>
+    <param name="use_sonars" value="$(arg use_sonars)"/>
+    <param name="use_point_cloud" value="$(arg use_point_cloud)"/>
+    <param name="use_point_cloud2" value="$(arg point_cloud_topic2)"/>
+    <param name="use_bumper" value="$(arg use_bumper)"/>
+    
+    <param name="cloud_downsampling" value="$(arg cloud_downsampling)"/>
+    <param name="cloud_points_threshold" value="$(arg cloud_points_threshold)"/>
+    <param name="lidar_points_threshold" value="$(arg lidar_points_threshold)"/>
+    
+    <param name="obs_detector_debug" value="False"/>
+    
+    <param name="max_x" value="$(arg max_x)"/>
+    <param name="min_x" value="$(arg min_x)"/>
+    <param name="max_y" value="$(arg max_y)"/>
+    <param name="min_y" value="$(arg min_y)"/>
+    <param name="max_z" value="$(arg max_z)"/>
+    <param name="min_z" value="$(arg min_z)"/>
+  </node>
+  
+  <node name="map_augmenter"  pkg="map_augmenter"  type="map_augmenter_node"  output="screen">
+    <param name="laser_scan_topic" value="$(arg laser_scan_topic)"/>
+    <param name="point_cloud_topic" value="$(arg point_cloud_topic)"/>
+    <param name="point_cloud_topic2" value="$(arg point_cloud_topic2)"/>
+    
+    <param name="use_lidar" value="$(arg use_lidar)"/>
+    <param name="use_sonars" value="$(arg use_sonars)"/>
+    <param name="use_point_cloud" value="$(arg use_point_cloud)"/>
+    <param name="use_point_cloud2" value="$(arg use_point_cloud2)"/>
+    
+    <param name="cloud_downsampling" value="$(arg cloud_downsampling)"/>
+    
+    <param name="inflation_radius" value="0.22"/>
+    <param name="cost_radius" value="0.1"/>
+    
+    <param name="max_x" value="$(arg max_x)"/>
+    <param name="min_x" value="$(arg min_x)"/>
+    <param name="max_y" value="$(arg max_y)"/>
+    <param name="min_y" value="$(arg min_y)"/>
+    <param name="max_z" value="$(arg max_z)"/>
+    <param name="min_z" value="$(arg min_z)"/>
+  </node>
+  
+  <!-- COMMENT THE FOLLOWING LINE IF THE MAP IS STARTED IN THE ROBOT-->
+  <node name="map_server" pkg="map_server" type="map_server" output="screen" args="$(arg static_map_file)"/>
+  
+  <node name="prohibition_map_server" pkg="map_server" type="map_server" output="screen" args="$(arg prohibition_map_file)">
+    <remap from="/static_map" to="/fixed_prohibition_map"/>
+    <remap from="/map" to="/fixed_prohibition_layer_map"/>
+  </node>
+  
+  <node name="map_enhancer" pkg="augment_gridmap_online" type="augment_gridmap_online_node" output="screen">
+    <remap from="point_obstacle" to="/clicked_point"/>
+    <param name="obstacle_radius" value="0.05" type="double"/>
+    <param name="input_map" value="/fixed_prohibition_layer_map"/>
+    <remap from="/grid_map/get_augmented_map" to="/prohibition_map"/>
+    <remap from="/grid_map/augmented_map" to="/prohibition_layer_map"/>
+  </node>
+  
+  <node name="mvn_pln"  pkg="mvn_pln"  type="mvn_pln_node"  output="screen">
+    <remap from="/nav_control/goal" to="/move_base_simple/goal"/>
+    <param name="patience" value="True"/>
+  </node>
+  
+  <node name="amcl" pkg="amcl" type="amcl" output="screen" args="scan:=$(arg laser_scan_topic) static_map:=/get_distance_map">
+    <!--param name="odom_alpha1" value="0.01"/>
+    <param name="odom_alpha2" value="0.01"/>
+    <param name="odom_alpha3" value="0.01"/>
+    <param name="odom_alpha4" value="0.01"/>
+    <param name="odom_alpha5" value="0.01"/-->
+    <param name="update_min_a" value="0.1"/>
+    <param name="laser_min_range" value="0.3"/>
+    <param name="odom_model_type" value="omni-corrected"/>
+  </node>
+
+  
+</launch>
