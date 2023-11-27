@@ -52,7 +52,7 @@ def create_sm():
                                                            #threshold=-15.0,
                                                            say_fn=SAY,
                                                            prompt_msg="Push the hand to start",
-                                                           success_msg="I will start the carry my luggate task."),
+                                                           success_msg="I will start the carry my luggage task."),
                                transitions={'success': 'TAKEBAG',
                                             'timeout': 'WAIT_HAND',
                                             'failure': 'failure'})
