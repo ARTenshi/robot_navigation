@@ -13,6 +13,8 @@
   
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find navigation_start)/rviz/config.rviz"/>
   
+  <arg name="prohibition_map_file"  default="$(find navigation_start)/maps/prohibition_maps/room_512/map.yaml"/>
+  
   <arg name="cmd_vel_name" default="/hsrb/command_velocity"/>
   <arg name="laser_scan_topic" default="/hsrb/base_scan"/>
   <arg name="point_cloud_topic" default="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
@@ -106,7 +108,6 @@
     <param name="min_z" value="$(arg min_z)"/>
   </node>
   
-  <arg name="prohibition_map_file"  default="$(find navigation_start)/prohibition_maps/room_512/map.yaml"/>
   <node name="prohibition_map_server" pkg="map_server" type="map_server" output="screen" args="$(arg prohibition_map_file)">
     <remap from="/static_map" to="/fixed_prohibition_map"/>
     <remap from="/map" to="/fixed_prohibition_layer_map"/>
