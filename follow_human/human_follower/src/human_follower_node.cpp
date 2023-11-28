@@ -2,7 +2,7 @@
 #include "ros/ros.h"
 #include "std_msgs/Bool.h"
 #include "std_msgs/Empty.h"
-#include "std_msgs/Float32MultiArray.h"
+#include "std_msgs/Float64MultiArray.h"
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/PointStamped.h"
 #include "std_msgs/Float32.h"
@@ -13,12 +13,12 @@
 ros::NodeHandle* n;
 ros::Subscriber  sub_legs_pose;
 ros::Publisher   pub_cmd_vel;
+ros::Publisher   pub_head_pose;
 tf::TransformListener* listener;
 std::string legs_pose_topic = "/hri/leg_finder/leg_pose";
 //Potential fields can be used only with an omnidirectional base.
 float repulsiveForce = 0.0;
-float KInfRep = 0.03;
-bool usePotFields = false;
+float k_linear_y = 0.1;
 
 //Values passed as parameters
 float control_alpha  = 0.6548;// 0.6548 ;//= 0.9; // = 1.2
@@ -27,6 +27,8 @@ float max_linear     = 0.3;
 float max_angular    = 0.7;//0.7 // 0.8 // 0.7
 float dist_to_human  = 0.9;
 bool  move_backwards = false;
+bool  move_head      = false;
+bool pot_fields = false;
 
 bool new_legs_pose = false;
 bool enable = false;
@@ -44,8 +46,8 @@ geometry_msgs::Twist calculate_speeds(float goal_x, float goal_y)
     {
         result.linear.x  = distance * exp(-(angle_error * angle_error) / control_alpha);
         result.linear.y  = 0;
-        if(usePotFields)
-            result.linear.y = KInfRep * repulsiveForce;
+        if(pot_fields)
+            result.linear.y = k_linear_y*repulsiveForce;
         //std::cout << result.linear.y << std::endl;
         result.angular.z = max_angular * (2 / (1 + exp(-angle_error / control_beta)) - 1);
     }
@@ -82,8 +84,21 @@ void callback_legs_pose(const geometry_msgs::PointStamped::ConstPtr& msg)
         //std::cout << "LegFinder.->WARNING!! Leg positions must be expressed wrt robot" << std::endl;
         transform_to_robot_position(human_x, human_y, msg->header.frame_id, human_x, human_y);
     }
+    if(move_head)
+    {
+	std_msgs::Float64MultiArray head_poses;
+	head_poses.data.push_back(atan2(msg->point.y, msg->point.x));
+	head_poses.data.push_back(-0.6);
+	pub_head_pose.publish(head_poses);
+    }
     pub_cmd_vel.publish(calculate_speeds(human_x, human_y));
     new_legs_pose = true;
+}
+
+void callback_rejection_force(const geometry_msgs::Vector3::ConstPtr& msg)
+{
+    geometry_msgs::Vector3 rejection_force = *msg;
+    repulsiveForce = rejection_force.y;
 }
 
 void callback_enable(const std_msgs::Bool::ConstPtr& msg)
@@ -107,28 +122,43 @@ int main(int argc, char** argv)
 {
     std::cout << "INITIALIZING HUMAN FOLLOWER BY MARCOSOFT..." << std::endl;
     ros::init(argc, argv, "human_follower");
+    
     n = new ros::NodeHandle();
     std::string cmd_vel_topic   = "/cmd_vel";
+    std::string head_topic   = "/hardware/head/goal_pose";
+    
     if(ros::param::has("~control_alpha"))
         ros::param::get("~control_alpha", control_alpha);
     if(ros::param::has("~control_beta"))
         ros::param::get("~control_beta", control_beta);
     if(ros::param::has("~max_linear"))
         ros::param::get("~max_linear", max_linear);
+    if(ros::param::has("~k_linear_y"))
+        ros::param::get("~k_linear_y", k_linear_y);
     if(ros::param::has("~max_angular"))
         ros::param::get("~max_angular", max_angular);
     if(ros::param::has("~dist_to_human"))
         ros::param::get("~dist_to_human", dist_to_human);
     if(ros::param::has("~move_backwards"))
         ros::param::get("~move_backwards", move_backwards);
+    if(ros::param::has("~move_head"))
+        ros::param::get("~move_head", move_head);
+    if(ros::param::has("~pot_fields"))
+        ros::param::get("~pot_fields", pot_fields);
     if(ros::param::has("~legs_pose_topic"))
         ros::param::get("~legs_pose_topic", legs_pose_topic);
     if(ros::param::has("~cmd_vel_topic"))
         ros::param::get("~cmd_vel_topic", cmd_vel_topic);
+    if(ros::param::has("~head_topic"))
+        ros::param::get("~head_topic", head_topic);
+    
+    ros::Subscriber sub_rejection_force  = n->subscribe("/navigation/obs_detector/pf_rejection_force", 1, callback_rejection_force);
     ros::Subscriber sub_enable = n->subscribe("/hri/human_following/enable", 1, callback_enable);
     ros::Subscriber sub_stop   = n->subscribe("/stop", 1, callback_stop);
     listener = new tf::TransformListener();
     pub_cmd_vel   = n->advertise<geometry_msgs::Twist>(cmd_vel_topic, 1);
+    pub_head_pose = n->advertise<std_msgs::Float64MultiArray>(head_topic, 1);
+    
     ros::Rate loop(30);
 
     std::cout << "HumanFollower.-> max_linear="<<max_linear<<"  max_angular="<<max_angular<<"  alpha="<<control_alpha<<"  beta="<<control_beta<<std::endl;
