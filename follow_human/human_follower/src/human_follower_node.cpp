@@ -1,130 +1,157 @@
 #include <iostream>
 #include "ros/ros.h"
 #include "std_msgs/Bool.h"
-#include "std_msgs/Float64MultiArray.h"
+#include "std_msgs/Empty.h"
+#include "std_msgs/Float32MultiArray.h"
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/PointStamped.h"
 #include "std_msgs/Float32.h"
+#include "tf/transform_listener.h"
+#include "tf_conversions/tf_eigen.h"
+
 
 ros::NodeHandle* n;
 ros::Subscriber  sub_legs_pose;
 ros::Publisher   pub_cmd_vel;
-ros::Publisher   pub_head_pose;
-ros::Subscriber sub_pot_fields;
-bool move_head = false;
-bool pot_fields = false;
+tf::TransformListener* listener;
+std::string legs_pose_topic = "/hri/leg_finder/leg_pose";
+//Potential fields can be used only with an omnidirectional base.
+float repulsiveForce = 0.0;
+float KInfRep = 0.03;
+bool usePotFields = false;
 
+//Values passed as parameters
+float control_alpha  = 0.6548;// 0.6548 ;//= 0.9; // = 1.2
+float control_beta   = 0.3;
+float max_linear     = 0.3;
+float max_angular    = 0.7;//0.7 // 0.8 // 0.7
+float dist_to_human  = 0.9;
+bool  move_backwards = false;
 
-float rej_force=0.0;
-
-//pot fields constant
-float k_linear_y=1.1;
+bool new_legs_pose = false;
+bool enable = false;
 
 geometry_msgs::Twist calculate_speeds(float goal_x, float goal_y)
 {
-    //Control constants
-    //float alpha = 0.6548;
-    float alpha =0.8;//= 0.9;
-    float beta = 0.3;
-    float max_angular = 0.6;//0.7
-
-
-    //Error calculation
     float angle_error = atan2(goal_y, goal_x);
     float distance    = sqrt(goal_x*goal_x + goal_y*goal_y);
-    distance -= 0.9;
-    if(distance <   0) distance = 0; //Robot will stop at 0.8 m from walker
-    if(distance > 0.35) distance = 0.35; //Distance is used as speed, so, robot will move at 0.5 max
+    distance -= dist_to_human;
+    if(!move_backwards)
+        if(distance <   0) distance = 0;
+    if(distance > max_linear) distance = max_linear;
     geometry_msgs::Twist result;
-    if(distance > 0)
+    if(distance > 0 || move_backwards)
     {
-	result.linear.x  = distance * exp(-(angle_error * angle_error) / alpha);
-	result.linear.y  = pot_fields? k_linear_y*rej_force:0;
-	result.angular.z = max_angular * (2 / (1 + exp(-angle_error / beta)) - 1);
+        result.linear.x  = distance * exp(-(angle_error * angle_error) / control_alpha);
+        result.linear.y  = 0;
+        if(usePotFields)
+            result.linear.y = KInfRep * repulsiveForce;
+        //std::cout << result.linear.y << std::endl;
+        result.angular.z = max_angular * (2 / (1 + exp(-angle_error / control_beta)) - 1);
     }
     else
     {
-	result.linear.x  = 0;
-	result.linear.y  = 0;
-	result.angular.z = max_angular * (2 / (1 + exp(-angle_error / beta)) - 1);
+        result.linear.x  = 0;
+        result.linear.y  = 0;
+        if(fabs(angle_error) >= M_PI_4 / 6.0f)
+            result.angular.z = max_angular * (2 / (1 + exp(-angle_error / control_beta)) - 1);
+        else
+            result.angular.z = 0;
     }
     return result;
 }
 
+void transform_to_robot_position(float x, float y, std::string frame_id, float& x_wrt_robot, float& y_wrt_robot)
+{
+    tf::StampedTransform tf;
+    listener->lookupTransform("base_link", frame_id, ros::Time(0), tf);
+    Eigen::Affine3d e;
+    tf::transformTFToEigen(tf, e);
+    Eigen::Vector3d v(x, y, 0);
+    v = e * v;
+    x_wrt_robot = v.x();
+    y_wrt_robot = v.y();
+}
+
 void callback_legs_pose(const geometry_msgs::PointStamped::ConstPtr& msg)
 {
-    if(msg->header.frame_id.compare("base_range_sensor_link") != 0)
+    float human_x = msg->point.x;
+    float human_y = msg->point.y;
+    if(msg->header.frame_id.compare("base_link") != 0)
     {
-	std::cout << "LegFinder.->WARNING!! Leg positions must be expressed wrt robot" << std::endl;
-	return;
+        //std::cout << "LegFinder.->WARNING!! Leg positions must be expressed wrt robot" << std::endl;
+        transform_to_robot_position(human_x, human_y, msg->header.frame_id, human_x, human_y);
     }
-    pub_cmd_vel.publish(calculate_speeds(msg->point.x, msg->point.y));
-    if(move_head)
-    {
-	std_msgs::Float64MultiArray head_poses;
-	head_poses.data.push_back(atan2(msg->point.y, msg->point.x));
-	//head_poses.data.push_back(-0.2);
-	head_poses.data.push_back(-0.8);
-	pub_head_pose.publish(head_poses);
-	//std::cout << "head_poses: " << head_poses << std::endl;
-    }
-}
-void callback_pot_fields(const std_msgs::Float32::ConstPtr& msg){
-
-    rej_force=msg->data;
+    pub_cmd_vel.publish(calculate_speeds(human_x, human_y));
+    new_legs_pose = true;
 }
 
 void callback_enable(const std_msgs::Bool::ConstPtr& msg)
 {
     if(msg->data)
     {
-	std::cout << "LegFinder.->Enable recevied" << std::endl;
-	sub_legs_pose = n->subscribe("/hri/leg_finder/leg_poses", 1, callback_legs_pose);      
-	pub_cmd_vel   = n->advertise<geometry_msgs::Twist>("/hsrb/command_velocity", 1);
-	pub_head_pose = n->advertise<std_msgs::Float64MultiArray>("/hardware/head/goal_pose", 1);
-	sub_pot_fields = n->subscribe("/navigation/obs_avoid/pot_fields/rejective_force", 1, callback_pot_fields);
+        std::cout << "LegFinder.->Enable recevied" << std::endl;
+        sub_legs_pose = n->subscribe(legs_pose_topic, 1, callback_legs_pose);      
     }
     else
-    {
-	sub_legs_pose.shutdown();
-	pub_cmd_vel.shutdown();
-	pub_head_pose.shutdown();
-	sub_pot_fields.shutdown();
-    }
+        sub_legs_pose.shutdown();
+    enable = msg->data;
 }
 
+void callback_stop(const std_msgs::Empty::ConstPtr& msg)
+{
+    sub_legs_pose.shutdown();
+}
 
 int main(int argc, char** argv)
 {
-    move_head = false;
-    for(int i=0; i < argc; i++)
-    {
-        std::string strParam(argv[i]);
-        if(strParam.compare("--move_head") == 0)
-            move_head = true;
-        if(strParam.compare("--pot_fields")==0){
-            pot_fields = true;
-            std::cout<<"pot fields activated"<<std::endl;
-        }
-    }
-    
     std::cout << "INITIALIZING HUMAN FOLLOWER BY MARCOSOFT..." << std::endl;
     ros::init(argc, argv, "human_follower");
     n = new ros::NodeHandle();
-    ros::Subscriber sub_enable = n->subscribe("/hri/human_following/start_follow", 1, callback_enable);
-    ros::Rate loop(20);
+    std::string cmd_vel_topic   = "/cmd_vel";
+    if(ros::param::has("~control_alpha"))
+        ros::param::get("~control_alpha", control_alpha);
+    if(ros::param::has("~control_beta"))
+        ros::param::get("~control_beta", control_beta);
+    if(ros::param::has("~max_linear"))
+        ros::param::get("~max_linear", max_linear);
+    if(ros::param::has("~max_angular"))
+        ros::param::get("~max_angular", max_angular);
+    if(ros::param::has("~dist_to_human"))
+        ros::param::get("~dist_to_human", dist_to_human);
+    if(ros::param::has("~move_backwards"))
+        ros::param::get("~move_backwards", move_backwards);
+    if(ros::param::has("~legs_pose_topic"))
+        ros::param::get("~legs_pose_topic", legs_pose_topic);
+    if(ros::param::has("~cmd_vel_topic"))
+        ros::param::get("~cmd_vel_topic", cmd_vel_topic);
+    ros::Subscriber sub_enable = n->subscribe("/hri/human_following/enable", 1, callback_enable);
+    ros::Subscriber sub_stop   = n->subscribe("/stop", 1, callback_stop);
+    listener = new tf::TransformListener();
+    pub_cmd_vel   = n->advertise<geometry_msgs::Twist>(cmd_vel_topic, 1);
+    ros::Rate loop(30);
 
-
-    if (n->getParam("/hri/human_following/k_pot_fields", k_linear_y)){
-        ROS_INFO("Got param k_linear_y: %f", k_linear_y);
-    } 
-    else{
-        ROS_INFO("Param default k_linear_y: %f", k_linear_y);
-    }
-
-
+    std::cout << "HumanFollower.-> max_linear="<<max_linear<<"  max_angular="<<max_angular<<"  alpha="<<control_alpha<<"  beta="<<control_beta<<std::endl;
+    std::cout << "HumanFollower.-> cmd_vel topic: " << cmd_vel_topic << "   legs_pose_topic: " << legs_pose_topic << std::endl;
+    int no_legs = 0;
     while(ros::ok())
-    {        
+    {
+        if(enable)
+        {
+            if(new_legs_pose)
+                no_legs = 0;
+            else
+            {
+                if(++no_legs > 30)
+                {
+                    no_legs = 0;
+                    geometry_msgs::Twist cmd_vel;
+                    cmd_vel.linear.x = 0;
+                    cmd_vel.angular.z = 0;
+                    pub_cmd_vel.publish(cmd_vel);
+                }
+            }
+        }
         ros::spinOnce();
         loop.sleep();
     }
