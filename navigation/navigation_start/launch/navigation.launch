@@ -27,6 +27,8 @@
   <arg name="use_point_cloud" default="True"/>
   <arg name="use_point_cloud2" value="False"/>
   <arg name="use_bumper" default="False"/>
+  <arg name="use_pot_fields" default="True"/>
+  
   
   <arg name="cloud_downsampling" default="5"/>
   <arg name="lidar_downsampling" default="1"/>
@@ -69,6 +71,7 @@
     <param name="use_point_cloud" value="$(arg use_point_cloud)"/>
     <param name="use_point_cloud2" value="$(arg point_cloud_topic2)"/>
     <param name="use_bumper" value="$(arg use_bumper)"/>
+    <param name="use_pot_fields" value="$(arg use_pot_fields)"/>
     
     <param name="cloud_downsampling" value="$(arg cloud_downsampling)"/>
     <param name="cloud_points_threshold" value="$(arg cloud_points_threshold)"/>
