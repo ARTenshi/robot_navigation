@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
   <remap from="/hardware/mobile_base/cmd_vel" to="/hsrb/command_velocity"/>
-  <param name="robot_description_semantic" textfile="$(find knowledge)/manipulation/hsrb.srdf"/>
+  <!--param name="robot_description_semantic" textfile="$(find knowledge)/manipulation/hsrb.srdf"/-->
 
   <group ns="hri">
     <node name="leg_finder" pkg="leg_finder" type="leg_finder_node" output="screen" args="--hyp">
@@ -12,7 +12,7 @@
       <param name="obst_div" value="9"/>
     </node>
 
-    <node name="human_follower" pkg="human_follower" type="human_follower_node" output="screen" args="--pot_fields">
+    <node name="human_follower" pkg="human_follower" type="human_follower_node" output="screen" args="--move_head --pot_fields">
       <param name="distance" value="0.6"/>
     </node>
   </group>
