@@ -1,21 +1,37 @@
 #include <iostream>
 #include "ros/ros.h"
+#include "std_msgs/Empty.h"
 #include "std_msgs/Bool.h"
 #include "sensor_msgs/LaserScan.h"
 #include "geometry_msgs/PointStamped.h"
 #include "visualization_msgs/Marker.h"
+#include "tf/transform_listener.h"
+#include "tf_conversions/tf_eigen.h"
 
 //Constants to find leg hypothesis
 #define FILTER_THRESHOLD  .081
+/*
 #define FLANK_THRESHOLD  .04
 #define HORIZON_THRESHOLD  25
 #define MAX_FLOAT  57295779500
-#define PIERNA_DELGADA  0.006241//7.9CM,0.006241,6241
-#define PIERNA_GRUESA  0.037//19.23CM,0.037,37000
-#define DOS_PIERNAS_DELGADAS  0.056644//23.8CM,0.056644,56644
-#define DOS_PIERNAS_GRUESAS  0.25//50CM,0.25,250000
-#define DOS_PIERNAS_CERCAS  0.022201//14.9CM,0.022201,22201
-#define DOS_PIERNAS_LEJOS  0.16//40CM,0.16,160000
+#define LEG_THIN  0.006241//7.9CM,0.006241,6241
+#define LEG_THICK  0.037//19.23CM,0.037,37000
+#define TWO_LEGS_THIN  0.056644//23.8CM,0.056644,56644
+#define TWO_LEGS_THICK  0.25//50CM,0.25,250000
+#define TWO_LEGS_NEAR  0.022201//14.9CM,0.022201,22201
+#define TWO_LEGS_FAR  0.16//40CM,0.16,160000*/
+
+#define FLANK_THRESHOLD  .04
+#define HORIZON_THRESHOLD  9
+#define MAX_FLOAT  57295779500
+#define LEG_THIN  0.00341//7.9CM,0.006241,6241
+#define LEG_THICK  0.0567//19.23CM,0.037,37000
+#define TWO_LEGS_THIN  0.056644//23.8CM,0.056644,56644
+#define TWO_LEGS_THICK  0.25//50CM,0.25,250000
+#define TWO_LEGS_NEAR  0.0022201//14.9CM,0.022201,22201
+#define TWO_LEGS_FAR  0.25//40CM,0.16,160000*/
+
+#define IS_LEG_THRESHOLD 0.5
 //Constants to check if there are legs in front of the robot
 #define IN_FRONT_MIN_X  0.25
 #define IN_FRONT_MAX_X  1.5
@@ -55,8 +71,9 @@ ros::NodeHandle* n;
 ros::Subscriber subLaserScan;
 ros::Publisher pub_legs_hypothesis;
 ros::Publisher pub_legs_pose;      
-ros::Publisher pub_legs_found;     
-bool show_hypothesis   = false;
+ros::Publisher pub_legs_found;
+tf::TransformListener* listener;
+
 bool legs_found        = false;
 bool stop_robot        = false;
 int  legs_in_front_cnt = 0;
@@ -69,19 +86,28 @@ std::vector<float> legs_y_filter_input;
 std::vector<float> legs_y_filter_output;
 std::string frame_id;
 
-float obst_xmin;
-float obst_xmax;
-float obst_ymin;
-float obst_ymax;
-float obst_div;
+//Parameter-passed values
+std::string laser_scan_topic = "/scan";
+std::string laser_scan_frame = "laser_link";
+bool show_hypothesis = false;
+int scan_downsampling = 1;
 
+std::vector<float> downsample_scan(std::vector<float>& ranges, int downsampling)
+{
+    std::vector<float> new_scans;
+    new_scans.resize(ranges.size()/downsampling);
+    for(int i=0; i < ranges.size(); i+=downsampling)
+        new_scans[i/downsampling] = ranges[i];
+
+    return new_scans;
+}
 
 std::vector<float> filter_laser_ranges(std::vector<float>& laser_ranges)
 {
     std::vector<float> filtered_ranges;
     filtered_ranges.resize(laser_ranges.size());
     filtered_ranges[0] = 0;
-    int i = 0;
+    int i = 1;
     int max_idx = laser_ranges.size() - 1;
     bool is_cluster = false;
 
@@ -121,7 +147,7 @@ bool is_leg(float x1, float y1, float x2, float y2)
         else
             m2 = MAX_FLOAT;
         angle = fabs((m2 - m1) / (1 + (m2*m1)));
-        if(angle > 1.999)
+        if(angle > IS_LEG_THRESHOLD)
             result = true;
     }
     return result;
@@ -144,18 +170,30 @@ bool obst_in_front(sensor_msgs::LaserScan& laser, float xmin, float xmax, float 
         return true;
 }
 
+Eigen::Affine3d get_lidar_position()
+{
+    tf::StampedTransform tf;
+    listener->lookupTransform("base_link", laser_scan_frame, ros::Time(0), tf);
+    Eigen::Affine3d e;
+    tf::transformTFToEigen(tf, e);
+    return e;
+}
+
 void find_leg_hypothesis(sensor_msgs::LaserScan& laser, std::vector<float>& legs_x, std::vector<float>& legs_y)
 {
     std::vector<float> laser_x;
     std::vector<float> laser_y;
     laser_x.resize(laser.ranges.size());
     laser_y.resize(laser.ranges.size());
+    Eigen::Affine3d lidar_to_robot = get_lidar_position();
     float theta = laser.angle_min;
     for(size_t i=0; i < laser.ranges.size(); i++)
     {
-        theta = laser.angle_min + i*laser.angle_increment;
-        laser_x[i] = laser.ranges[i] * cos(theta);
-        laser_y[i] = laser.ranges[i] * sin(theta);
+        theta = laser.angle_min + i*laser.angle_increment*scan_downsampling;
+        Eigen::Vector3d v(laser.ranges[i] * cos(theta), laser.ranges[i] * sin(theta), 0);
+        v = lidar_to_robot * v;
+        laser_x[i] = v.x();
+        laser_y[i] = v.y();
     }
 
     std::vector<float> flank_x;
@@ -171,11 +209,11 @@ void find_leg_hypothesis(sensor_msgs::LaserScan& laser, std::vector<float>& legs
         int ant = ant2;
         if(fabs(laser.ranges[i] - laser.ranges[i-1]) > FLANK_THRESHOLD) ant2 = i;
         if(fabs(laser.ranges[i] - laser.ranges[i-1]) > FLANK_THRESHOLD &&
-                (is_leg(laser_x[ant], laser_y[ant], laser_x[i-1], laser_y[i-1]) || 
-                 is_leg(laser_x[ant+1], laser_y[ant+1], laser_x[i-2], laser_y[i-2])))
+           (is_leg(laser_x[ant], laser_y[ant], laser_x[i-1], laser_y[i-1]) || 
+                is_leg(laser_x[ant+1], laser_y[ant+1], laser_x[i-2], laser_y[i-2])))
         {
-            if((pow(laser_x[ant] - laser_x[i-1], 2) + pow(laser_y[ant] - laser_y[i-1], 2)) > PIERNA_DELGADA &&
-               (pow(laser_x[ant] - laser_x[i-1], 2) + pow(laser_y[ant] - laser_y[i-1], 2)) < PIERNA_GRUESA)
+            if((pow(laser_x[ant] - laser_x[i-1], 2) + pow(laser_y[ant] - laser_y[i-1], 2)) > LEG_THIN &&
+                    (pow(laser_x[ant] - laser_x[i-1], 2) + pow(laser_y[ant] - laser_y[i-1], 2)) < LEG_THICK)
             {
                 sum_x = 0;
                 sum_y = 0;
@@ -188,8 +226,8 @@ void find_leg_hypothesis(sensor_msgs::LaserScan& laser, std::vector<float>& legs
                 flank_y.push_back(sum_y / (float)(i - ant));
                 flank_id.push_back(false);
             }
-            else if((pow(laser_x[ant] - laser_x[i-1], 2) + pow(laser_y[ant] - laser_y[i-1], 2)) > DOS_PIERNAS_DELGADAS &&
-                    (pow(laser_x[ant] - laser_x[i-1], 2) + pow(laser_y[ant] - laser_y[i-1], 2)) < DOS_PIERNAS_GRUESAS)
+            else if((pow(laser_x[ant] - laser_x[i-1], 2) + pow(laser_y[ant] - laser_y[i-1], 2)) > TWO_LEGS_THIN &&
+                    (pow(laser_x[ant] - laser_x[i-1], 2) + pow(laser_y[ant] - laser_y[i-1], 2)) < TWO_LEGS_THICK)
             {
                 sum_x = 0;
                 sum_y = 0;
@@ -201,15 +239,15 @@ void find_leg_hypothesis(sensor_msgs::LaserScan& laser, std::vector<float>& legs
                 cua_x = sum_x / (float)(i - ant);
                 cua_y = sum_y / (float)(i - ant);
                 legs_x.push_back(cua_x);
-                legs_y.push_back(cua_y);   
+                legs_y.push_back(cua_y);
             }
         }
     }
 
     for(int i=0; i < (int)(flank_x.size())-2; i++)
         for(int j=1; j < 3; j++)
-            if((pow(flank_x[i] - flank_x[i+j], 2) + pow(flank_y[i] - flank_y[i+j], 2)) > DOS_PIERNAS_CERCAS &&
-               (pow(flank_x[i] - flank_x[i+j], 2) + pow(flank_y[i] - flank_y[i+j], 2)) < DOS_PIERNAS_LEJOS)
+            if((pow(flank_x[i] - flank_x[i+j], 2) + pow(flank_y[i] - flank_y[i+j], 2)) > TWO_LEGS_NEAR &&
+                    (pow(flank_x[i] - flank_x[i+j], 2) + pow(flank_y[i] - flank_y[i+j], 2)) < TWO_LEGS_FAR)
             {
                 px = (flank_x[i] + flank_x[i + j])/2;
                 py = (flank_y[i] + flank_y[i + j])/2;
@@ -223,12 +261,12 @@ void find_leg_hypothesis(sensor_msgs::LaserScan& laser, std::vector<float>& legs
                     flank_id[i+j] = true;
                 }
             }
-
+/*
     if(flank_y.size() > 1 &&
             (pow(flank_x[flank_x.size()-2] - flank_x[flank_x.size()-1], 2) +
-             pow(flank_y[flank_y.size()-2] - flank_y[flank_y.size()-1], 2)) > DOS_PIERNAS_CERCAS &&
+             pow(flank_y[flank_y.size()-2] - flank_y[flank_y.size()-1], 2)) > TWO_LEGS_NEAR &&
             (pow(flank_x[flank_x.size()-2] - flank_x[flank_x.size()-1], 2) +
-             pow(flank_y[flank_y.size()-2] - flank_y[flank_y.size()-1], 2)) < DOS_PIERNAS_LEJOS)
+             pow(flank_y[flank_y.size()-2] - flank_y[flank_y.size()-1], 2)) < TWO_LEGS_FAR)
     {
         px = (flank_x[flank_x.size()-2] + flank_x[flank_x.size()-1])/2.0;
         py = (flank_y[flank_y.size()-2] + flank_y[flank_y.size()-1])/2.0;
@@ -242,7 +280,7 @@ void find_leg_hypothesis(sensor_msgs::LaserScan& laser, std::vector<float>& legs
             flank_id[flank_y.size() - 1] = true;
         }
     }
-
+*/
     for(int i=0; i < flank_y.size(); i++)
         if(!flank_id[i])
         {
@@ -251,9 +289,9 @@ void find_leg_hypothesis(sensor_msgs::LaserScan& laser, std::vector<float>& legs
             cua_y = flank_y[i];
             legs_x.push_back(cua_x);
             legs_y.push_back(cua_y);
-        }
+            }
 
-    //std::cout << "LegFinder.->Found " << legs_x.size() << " leg hypothesis" << std::endl;
+        //std::cout << "LegFinder.->Found " << legs_x.size() << " leg hypothesis" << std::endl;*/
 }
 
 visualization_msgs::Marker get_hypothesis_marker(std::vector<float>& legs_x, std::vector<float>& legs_y)
@@ -332,13 +370,16 @@ bool get_nearest_legs_to_last_legs(std::vector<float>& legs_x, std::vector<float
 
 void callback_scan(const sensor_msgs::LaserScan::Ptr& msg)
 {
-    sensor_msgs::LaserScan oriLaser;
-    oriLaser = *msg;
+    if(scan_downsampling > 1)
+        msg->ranges = downsample_scan(msg->ranges, scan_downsampling);
     msg->ranges = filter_laser_ranges(msg->ranges);
     std::vector<float> legs_x, legs_y;
     find_leg_hypothesis(*msg, legs_x, legs_y);
     if(show_hypothesis)
+    {
+        //std::cout << "Found legs: " << legs_x.size() << "  " << legs_y.size() << std::endl;
         pub_legs_hypothesis.publish(get_hypothesis_marker(legs_x, legs_y));
+    }
 
     float nearest_x, nearest_y;
     if(!legs_found && !stop_robot)
@@ -367,14 +408,10 @@ void callback_scan(const sensor_msgs::LaserScan::Ptr& msg)
 
         bool fobst_in_front = false;
 
-        //std::cout << "obst_xmin" << obst_xmax << std::endl;
-        if(!(legs_x_filter_output[0] >= obst_xmin && legs_x_filter_output[0] <= obst_xmax && legs_y_filter_output[0] >= obst_ymin && legs_y_filter_output[0] <= obst_ymax))
-            fobst_in_front = obst_in_front(oriLaser, obst_xmin, obst_xmax, obst_ymin, obst_ymax, 126.0 / obst_div * (obst_xmax - obst_xmin));
-
         if(!fobst_in_front){
 
             //float diff = sqrt((nearest_x - last_legs_pose_x)*(nearest_x - last_legs_pose_x) +
-            //        (nearest_y - last_legs_pose_y)*(nearest_y - last_legs_pose_y));
+            //		  (nearest_y - last_legs_pose_y)*(nearest_y - last_legs_pose_y));
             bool publish_legs = false;
             if(get_nearest_legs_to_last_legs(legs_x, legs_y, nearest_x, nearest_y, last_legs_pose_x, last_legs_pose_y))
             {
@@ -429,60 +466,60 @@ void callback_scan(const sensor_msgs::LaserScan::Ptr& msg)
 void callback_enable(const std_msgs::Bool::ConstPtr& msg)
 {
     if(msg->data)
-	subLaserScan = n->subscribe("/hsrb/base_scan", 1, callback_scan);
+        subLaserScan = n->subscribe(laser_scan_topic, 1, callback_scan);
     else
     {
-	subLaserScan.shutdown();
-	legs_found = false;
-	legs_in_front_cnt = 0;
+        subLaserScan.shutdown();
+        legs_found = false;
+        legs_in_front_cnt = 0;
     }
+}
+
+void callback_stop(const std_msgs::Empty::ConstPtr& msg)
+{
+    subLaserScan.shutdown();
+    legs_found = false;
+    legs_in_front_cnt = 0;
 }
 
 int main(int argc, char** argv)
 {
-    show_hypothesis = false;
-    for(int i=0; i < argc; i++)
-    {
-        std::string strParam(argv[i]);
-        if(strParam.compare("--hyp") == 0)
-            show_hypothesis = true;
-    }
-    
-    std::cout << "INITIALIZING LEG FINDER BY MARCOSOFT..." << std::endl;
+    std::cout << "INITIALIZING LEG FINDER BY MARCO NEGRETE..." << std::endl;
     ros::init(argc, argv, "leg_finder");
-    n = new ros::NodeHandle();
-
-    if(ros::param::has("~obst_xmin"))
-        ros::param::get("~obst_xmin", obst_xmin);
-    if(ros::param::has("~obst_xmax"))
-        ros::param::get("~obst_xmax", obst_xmax);
-    if(ros::param::has("~obst_ymin"))
-        ros::param::get("~obst_ymin", obst_ymin);
-    if(ros::param::has("~obst_ymax"))
-        ros::param::get("~obst_ymax", obst_ymax);
-    if(ros::param::has("~obst_div"))
-        ros::param::get("~obst_div", obst_div);
-
+    ros::NodeHandle nh;
+    n = &nh;
+    if(ros::param::has("~show_hypothesis"))
+        ros::param::get("~show_hypothesis", show_hypothesis);
+    if(ros::param::has("~laser_scan_topic"))
+        ros::param::get("~laser_scan_topic", laser_scan_topic);
+    if(ros::param::has("~laser_scan_frame"))
+        ros::param::get("~laser_scan_frame",  laser_scan_frame);
+    if(ros::param::has("~scan_downsampling"))
+        ros::param::get("~scan_downsampling", scan_downsampling);
     ros::Subscriber subEnable = n->subscribe("/hri/leg_finder/enable", 1, callback_enable);
-    pub_legs_hypothesis = n->advertise<visualization_msgs::Marker>("/hri/visualization_marker", 1);
-    pub_legs_pose       = n->advertise<geometry_msgs::PointStamped>("/hri/leg_finder/leg_poses", 1);
+    ros::Subscriber subStop   = n->subscribe("/stop", 1, callback_stop);
+    pub_legs_hypothesis = n->advertise<visualization_msgs::Marker>("/hri/leg_finder/hypothesis", 1);
+    pub_legs_pose       = n->advertise<geometry_msgs::PointStamped>("/hri/leg_finder/leg_pose", 1);
     pub_legs_found      = n->advertise<std_msgs::Bool>("/hri/leg_finder/legs_found", 1);            
     //n->getParam("~frame_id", frame_id);
-    if(ros::param::has("~base_range_sensor_link"))
-        ros::param::get("~base_range_sensor_link", frame_id);
+    if(ros::param::has("~frame_id"))
+        ros::param::get("~frame_id", frame_id);
     if(frame_id.compare("") == 0)
-        frame_id = "base_range_sensor_link";
+        frame_id = "base_link";
 
+    listener = new tf::TransformListener();
+    listener->waitForTransform("base_link", laser_scan_topic, ros::Time(0), ros::Duration(10.0));
     ros::Rate loop(20);
 
     for(int i=0; i < 4; i++)
     {
-	legs_x_filter_input.push_back(0);
-	legs_x_filter_output.push_back(0);
-	legs_y_filter_input.push_back(0);
-	legs_y_filter_output.push_back(0);
+        legs_x_filter_input.push_back(0);
+        legs_x_filter_output.push_back(0);
+        legs_y_filter_input.push_back(0);
+        legs_y_filter_output.push_back(0);
     }
 
+    std::cout << "LegFinder.-> Show hyphotesis= " << (show_hypothesis?"True":"False") << "  laser_topic=" << laser_scan_topic << std::endl;
     while(ros::ok())
     {
         ros::spinOnce();
