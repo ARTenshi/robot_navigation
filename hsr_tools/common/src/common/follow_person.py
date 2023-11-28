@@ -27,7 +27,7 @@ class FollowPerson(smach.State):
         self.fp_enable_leg_finder_pub = rospy.Publisher(
             '/hri/leg_finder/enable', Bool)
         self.fp_start_follow_pub = rospy.Publisher(
-            '/hri/human_following/start_follow', Bool)
+            '/hri/human_following/enable', Bool)
 
         self.fp_legs_found_sub = rospy.Subscriber(
             '/hri/leg_finder/legs_found', Bool, self._fp_legs_found_cb)
