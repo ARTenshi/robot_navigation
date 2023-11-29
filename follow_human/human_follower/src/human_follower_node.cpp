@@ -18,7 +18,6 @@ tf::TransformListener* listener;
 std::string legs_pose_topic = "/hri/leg_finder/leg_pose";
 //Potential fields can be used only with an omnidirectional base.
 float repulsiveForce = 0.0;
-float k_linear_y = 0.1;
 
 //Values passed as parameters
 float control_alpha  = 0.6548;// 0.6548 ;//= 0.9; // = 1.2
@@ -47,7 +46,7 @@ geometry_msgs::Twist calculate_speeds(float goal_x, float goal_y)
         result.linear.x  = distance * exp(-(angle_error * angle_error) / control_alpha);
         result.linear.y  = 0;
         if(pot_fields)
-            result.linear.y = k_linear_y*repulsiveForce;
+            result.linear.y = repulsiveForce;
         //std::cout << result.linear.y << std::endl;
         result.angular.z = max_angular * (2 / (1 + exp(-angle_error / control_beta)) - 1);
     }
@@ -133,8 +132,6 @@ int main(int argc, char** argv)
         ros::param::get("~control_beta", control_beta);
     if(ros::param::has("~max_linear"))
         ros::param::get("~max_linear", max_linear);
-    if(ros::param::has("~k_linear_y"))
-        ros::param::get("~k_linear_y", k_linear_y);
     if(ros::param::has("~max_angular"))
         ros::param::get("~max_angular", max_angular);
     if(ros::param::has("~dist_to_human"))
