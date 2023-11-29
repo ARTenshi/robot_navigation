@@ -54,6 +54,7 @@
     <param name="max_angular_speed" value="1.25"/>
     <param name="control_alpha" value="0.2"/>
     <param name="control_beta" value="0.8"/>
+    <param name="use_pot_fields" value="$(arg use_pot_fields)"/>
     <param name="cmd_vel_name" value="$(arg cmd_vel_name)"/>
   </node>
   
@@ -75,6 +76,8 @@
     <param name="lidar_points_threshold" value="$(arg lidar_points_threshold)"/>
     
     <param name="obs_detector_debug" value="False"/>
+    
+    <param name="pot_fields_k_rej" value="0.25"/>
     
     <param name="max_x" value="$(arg max_x)"/>
     <param name="min_x" value="$(arg min_x)"/>
