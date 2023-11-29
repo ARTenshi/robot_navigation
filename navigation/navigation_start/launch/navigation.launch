@@ -27,8 +27,7 @@
   <arg name="use_point_cloud" default="True"/>
   <arg name="use_point_cloud2" value="False"/>
   <arg name="use_bumper" default="False"/>
-  <arg name="use_pot_fields" default="True"/>
-  
+  <arg name="use_pot_fields" default="False"/>
   
   <arg name="cloud_downsampling" default="5"/>
   <arg name="lidar_downsampling" default="1"/>
@@ -57,6 +56,7 @@
     <param name="max_angular_speed" value="1.25"/>
     <param name="control_alpha" value="0.2"/>
     <param name="control_beta" value="0.8"/>
+    <param name="use_pot_fields" value="$(arg use_pot_fields)"/>
     <param name="cmd_vel_name" value="$(arg cmd_vel_name)"/>
   </node>
   
@@ -86,6 +86,9 @@
     <param name="max_z" value="$(arg max_z)"/>
     <param name="min_z" value="$(arg min_z)"/>
   </node>
+
+  <arg name="topic_name" default="/navigation/obs_detector/enable" />
+  <node pkg="rostopic" type="rostopic" name="rostopic_pub_node" output="screen" args="pub $(arg topic_name) std_msgs/Bool 'data: true'" />
   
   <node name="map_augmenter"  pkg="map_augmenter"  type="map_augmenter_node"  output="screen">
     <param name="laser_scan_topic" value="$(arg laser_scan_topic)"/>
