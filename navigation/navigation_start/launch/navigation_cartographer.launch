@@ -77,6 +77,8 @@
     
     <param name="obs_detector_debug" value="False"/>
     
+    <param name="pot_fields_k_rej" value="0.25"/>
+    
     <param name="max_x" value="$(arg max_x)"/>
     <param name="min_x" value="$(arg min_x)"/>
     <param name="max_y" value="$(arg max_y)"/>

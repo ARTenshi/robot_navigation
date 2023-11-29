@@ -27,7 +27,7 @@
   <arg name="use_point_cloud" default="True"/>
   <arg name="use_point_cloud2" value="False"/>
   <arg name="use_bumper" default="False"/>
-  <arg name="use_pot_fields" default="False"/>
+  <arg name="use_pot_fields" default="True"/>
   
   <arg name="cloud_downsampling" default="5"/>
   <arg name="lidar_downsampling" default="1"/>
@@ -78,6 +78,8 @@
     <param name="lidar_points_threshold" value="$(arg lidar_points_threshold)"/>
     
     <param name="obs_detector_debug" value="False"/>
+    
+    <param name="pot_fields_k_rej" value="0.25"/>
     
     <param name="max_x" value="$(arg max_x)"/>
     <param name="min_x" value="$(arg min_x)"/>
