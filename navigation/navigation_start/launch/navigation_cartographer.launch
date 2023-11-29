@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
-  <remap from="/static_map" to="/prohibition_map"/>
-  <remap from="/static_obstacle_map_ref" to="/prohibition_map"/>
+  <remap from="/get_distance_map" to="/get_cartographer_map"/>
+  <remap from="/static_obstacle_map_ref" to="/get_cartographer_map"/>
   
   <remap from="/laser_2d_pose" to= "/global_pose"/>
   <remap from="/cmd_vel" to="/hsrb/command_velocity"/>
@@ -45,6 +45,10 @@
     <node name="arm" pkg="arm" type="arm_node" output="screen"/>
   </group>
   
+  <node name="map_server_bypass" pkg="map_server_bypass" type="map_server_bypass_node" output="screen">
+    <param name="occupied_threshold" value="70"/>
+  </node>
+  
   <node name="path_planner" pkg="path_planner" type="path_planner_node" output="screen">
     <param name="diagonal_paths" value="False"/>
   </node>
@@ -87,6 +91,9 @@
     <param name="min_z" value="$(arg min_z)"/>
   </node>
   
+  <arg name="topic_name" default="/navigation/obs_detector/enable" />
+  <node pkg="rostopic" type="rostopic" name="rostopic_pub_node" output="screen" args="pub $(arg topic_name) std_msgs/Bool 'data: true'" />
+  
   <node name="map_augmenter"  pkg="map_augmenter"  type="map_augmenter_node"  output="screen">
     <param name="laser_scan_topic" value="$(arg laser_scan_topic)"/>
     <param name="point_cloud_topic" value="$(arg point_cloud_topic)"/>
@@ -96,6 +103,8 @@
     <param name="use_sonars" value="$(arg use_sonars)"/>
     <param name="use_point_cloud" value="$(arg use_point_cloud)"/>
     <param name="use_point_cloud2" value="$(arg use_point_cloud2)"/>
+    
+    <param name="use_online" value="True"/>
     
     <param name="cloud_downsampling" value="$(arg cloud_downsampling)"/>
     
