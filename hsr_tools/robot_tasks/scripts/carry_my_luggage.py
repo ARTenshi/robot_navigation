@@ -137,7 +137,7 @@ def create_sm():
                 whole_body.move_to_go()
                 
                 #Return inside the a location while avoiding obstacles
-                omni_base.go_abs(0.0, 0.0, 0.0, 200, "pumas")
+                omni_base.go_abs(0.1, 0.0, 0.0, 200, "pumas")
                 
                 return 'success'
               
