@@ -199,21 +199,21 @@ visualization_msgs::MarkerArray get_force_arrow_markers(geometry_msgs::Vector3& 
     marker.scale.y = 0.1;
     marker.points.push_back(geometry_msgs::Point());
     marker.points.push_back(geometry_msgs::Point());
-    marker.points[1].x = 10*f1.x;
-    marker.points[1].y = 10*f1.y;
+    marker.points[1].x = (10.0/pot_fields_k_rej)*f1.x;
+    marker.points[1].y = (10.0/pot_fields_k_rej)*f1.y;
     marker.color.a = 1.0; // Don't forget to set the alpha!
     marker.color.r = 0.0;
     marker.color.g = 0.0;
     marker.color.b = 1.0;
     markers.markers.push_back(marker);
     marker.id = 1;
-    marker.points[1].x = 10*f2.x;
-    marker.points[1].y = 10*f2.y;
+    marker.points[1].x = (10.0/pot_fields_k_rej)*f2.x;
+    marker.points[1].y = (10.0/pot_fields_k_rej)*f2.y;
     marker.color.g = 0.5;
     markers.markers.push_back(marker);
     marker.id = 2;
-    marker.points[1].x = 10*(f1.x + f2.x);
-    marker.points[1].y = 10*(f1.y + f2.y);
+    marker.points[1].x = (10.0/pot_fields_k_rej)*(f1.x + f2.x);
+    marker.points[1].y = (10.0/pot_fields_k_rej)*(f1.y + f2.y);
     marker.color.r = 1.0;
     marker.color.g = 0.0;
     marker.color.b = 0.0;
