@@ -25,6 +25,7 @@ bool use_lidar  = true;
 bool use_sonars = false;
 bool use_cloud  = false;
 bool use_cloud2 = false;
+bool use_online = false;
 
 tf::TransformListener* listener;
 std::string base_link_name      = "/base_footprint";
@@ -318,6 +319,27 @@ bool callback_augmented_map(nav_msgs::GetMap::Request& req, nav_msgs::GetMap::Re
 {
     std::cout << "MapAugmenter.->Augmenting map using: "<<(use_lidar?"lidar ":"")<<(use_sonars?"sonars ":"");
     std::cout << (use_cloud? "point_cloud ":"") << (use_cloud2? "point_cloud2":"") <<std::endl;
+ 
+    if(use_online){
+        ros::NodeHandle n_;
+        ros::ServiceClient cltGetStaticMap = n_.serviceClient<nav_msgs::GetMap>("/static_map");
+        nav_msgs::GetMap srvMap;
+        
+        if(!cltGetStaticMap.call(srvMap))
+        {
+            std::cout << "MapAugmenter.->Cannot get static map!!!!" << std::endl;
+            return false;
+        }
+        
+        std::cout << "MapAugmenter.->Updating static map and static cost map..." << std::endl;
+        static_map = srvMap.response.map;
+        static_map = inflate_map(static_map, inflation_radius);
+        static_cost_map = get_cost_map(static_map, cost_radius);
+        obstacles_map = static_map;
+        for(size_t i=0; i < obstacles_map.data.size(); i++) obstacles_map.data[i] = 0;
+        std::cout << "MapAugmenter.->Statics maps have been updated." << std::endl;
+    } 
+ 
     if(use_lidar  && !obstacles_map_with_lidar())
         return false;
     if(use_sonars && !obstacles_map_with_sonars())
@@ -424,6 +446,8 @@ int main(int argc, char** argv)
         ros::param::get("~use_point_cloud", use_cloud);
     if(ros::param::has("~use_point_cloud2"))
         ros::param::get("~use_point_cloud2", use_cloud2);
+    if(ros::param::has("~use_online"))
+        ros::param::get("~use_online", use_online);
     if(ros::param::has("~min_x"))
         ros::param::get("~min_x", minX);
     if(ros::param::has("~max_x"))
