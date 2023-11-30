@@ -22,7 +22,8 @@ void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg) {
     } else if ( (int)msg->data[i] >= 0) {
       arr.push_back( 0 );
     } else {
-      arr.push_back( (int)msg->data[i] );
+      //arr.push_back( (int)msg->data[i] );
+      arr.push_back( 0 );
     }
   }
   map_msg.data = arr;
