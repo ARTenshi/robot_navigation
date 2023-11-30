@@ -136,7 +136,7 @@ Relevant parameters can be find in the navigation launch files in ```~/nav_ws/sr
   <arg name="static_map_file"  default="$(find navigation_start)/maps/maps/room_512/map.yaml"/>
 ```
 
-For robor localisation, we use the original slam map from the ```map_server map_saver``` in ```maps/maps/```. additionaly, for path planning we edit the previous map to add prohibited and or closed areas (e.g. considering a laser-scan-based mapping, we add the unmapped table area, or, to travel between two main doors, to avoid surrounding it from the outside, we add closed edges; we do not do this with the localisation map to avoid misslocalisation errors between the real sensor reading and an edited map.)
+For robor localisation, we use the original slam map from the ```map_server map_saver``` in ```maps/maps/```. Additionaly, for path planning we edit the previous map to add prohibited and or closed areas (e.g. considering a laser-scan-based mapping, we add the unmapped table area, or, to travel between two main doors, to avoid surrounding it from the outside, we add closed edges; we do not do this with the localisation map to avoid misslocalisation errors between the real sensor reading and an edited map.)
 
 **Enable/Disable potential fields**
 
