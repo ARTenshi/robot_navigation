@@ -127,7 +127,7 @@ roslaunch robot_tasks carry_my_luggage.launch
 
 ### Notes
 
-Relevant parameters can be find in the navigation launch files in ```~/nav_ws/src/robot_navigation/navigation/navigation_start/launch```. In specific: 
+Relevant parameters can be found in the navigation launch files in ```~/nav_ws/src/robot_navigation/navigation/navigation_start/launch```. In specific: 
 
 **Update your map names**
 
