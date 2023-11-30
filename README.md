@@ -41,7 +41,7 @@ git clone https://github.com/ARTenshi/robot_navigation.git
 ```
 
 
-2. Checkout to the correct branch. Available brancehs are:
+2. Checkout to the correct branch. Available branches are:
 
 * main - raw implementation for navigation considering a command velocity actuator and a laser scan sensor; additionally, an rgbd camera can be used.
 
