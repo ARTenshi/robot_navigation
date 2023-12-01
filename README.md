@@ -1,6 +1,6 @@
 # robot_navigation
 
-Service robots are intended to help humans in non-industrial environments such as houses or offices. To accomplish their goal, service robots must have several skills such as object recognition and manipulation, face detection and recognition, speech recognition and synthesis, task planning and, one of the most important, navigation in dynamic environments. This repository describes a fully implemented motion-planning system which comprehends from motion and path planning algorithms to spatial representation and behavior-based active navigation.
+Service robots are intended to help humans in non-industrial environments such as houses or offices. To accomplish their goal, service robots must have several skills such as object recognition and manipulation, face detection and recognition, speech recognition and synthesis, task planning and, one of the most important, navigation in dynamic environments. This repository describes a fully implemented motion-planning system that comprehends from motion and path planning algorithms to spatial representation and behavior-based active navigation.
 
 This paper can be consulted online for free at this [link](https://bit.ly/40YEcZR). The following video shows this system working at RoboCup where we have won the **Smoothest, Safest Navigation Award** in 2022 and 2023.
 
@@ -80,9 +80,9 @@ TODO
 
 ### Prerequisites
 
-To use SLAM and navigation, you need to start a maping system. 
+To use SLAM and navigation, you need to start a mapping system. 
 
-We have follow the instructions for the *Cartographer ROS for the Toyota HSR* as per this [link](https://google-cartographer-ros-for-the-toyota-hsr.readthedocs.io/en/latest/)
+We have followed the instructions for the *Cartographer ROS for the Toyota HSR* as per this [link](https://google-cartographer-ros-for-the-toyota-hsr.readthedocs.io/en/latest/)
 
 ### Follow me (HSR)
 
@@ -111,7 +111,7 @@ source cartographer_ws/install_isolated/setup.bash
 roslaunch cartographer_toyota_hsr hsr_2d.launch
 ```
 
-Start the navigation with cartographer (i.e. using a dynamic map):
+Start the navigation with a cartographer (i.e. using a dynamic map):
 
 ```
 source ~/nav_ws/devel/setup.bash
@@ -136,14 +136,14 @@ Relevant parameters can be found in the navigation launch files in ```~/nav_ws/s
   <arg name="static_map_file"  default="$(find navigation_start)/maps/maps/room_512/map.yaml"/>
 ```
 
-For robor localisation, we use the original slam map from the ```map_server map_saver``` in ```maps/maps/```. Additionaly, for path planning we edit the previous map to add prohibited and or closed areas (e.g. considering a laser-scan-based mapping, we add the unmapped table area, or, to travel between two main doors, to avoid surrounding it from the outside, we add closed edges; we do not do this with the localisation map to avoid misslocalisation errors between the real sensor reading and an edited map.)
+For robot localisation, we use the original slam map from the ```map_server map_saver``` in ```maps/maps/```. Additionally, for path planning, we edit the previous map to add prohibited and or closed areas (e.g. considering a laser-scan-based mapping, we add the unmapped table area, or, to travel between two main doors, to avoid surrounding it from the outside, we add closed edges; we do not do this with the localisation map to avoid misslocalisation errors between the real sensor reading and an edited map.)
 
 **Enable/Disable potential fields**
 
 ```
 <arg name="use_pot_fields" default="True"/>
 ```
-For dynamic obstacle avoidance we use rejective potential fields that can be enabled or disabled with this parameter. 
+For dynamic obstacle avoidance, we use rejective potential fields that can be enabled or disabled with this parameter. 
 
 Additionally:
 
@@ -154,7 +154,7 @@ this parameter indicates the obstacle's rejective force importance during naviga
 
 # References
 
-[1] The human follower implementation is based in this master thesis work:
+[1] The human follower implementation is based on this master thesis work:
 
 ```
 @article{becerra:2012,
@@ -164,6 +164,8 @@ journal		= {{UNAM}},
 year		= {2012}
 }
 ```
+
+You can download it at the following [link](https://web.siia.unam.mx/siia-publico/v/include/modulo_productos/tesis.php?id=858286) (click on *URL: Ver Tesis*).
 
 # Authors
 
