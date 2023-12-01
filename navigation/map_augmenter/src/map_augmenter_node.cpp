@@ -323,16 +323,23 @@ bool callback_augmented_map(nav_msgs::GetMap::Request& req, nav_msgs::GetMap::Re
     if(use_online){
         ros::NodeHandle n_;
         ros::ServiceClient cltGetStaticMap = n_.serviceClient<nav_msgs::GetMap>("/static_map");
+        ros::ServiceClient cltGetProhibitionMap = n_.serviceClient<nav_msgs::GetMap>("/prohibition_map");
         nav_msgs::GetMap srvMap;
+        nav_msgs::GetMap srvProhibitionMap;
         
         if(!cltGetStaticMap.call(srvMap))
         {
             std::cout << "MapAugmenter.->Cannot get static map!!!!" << std::endl;
             return false;
         }
+        if(!cltGetProhibitionMap.call(srvProhibitionMap))
+        {
+            std::cout << "MapAugmenter.->Cannot get prohibition map!!!!" << std::endl;
+            return false;
+        }
         
         std::cout << "MapAugmenter.->Updating static map and static cost map..." << std::endl;
-        static_map = srvMap.response.map;
+        static_map = merge_maps(srvMap.response.map, srvProhibitionMap.response.map);
         static_map = inflate_map(static_map, inflation_radius);
         static_cost_map = get_cost_map(static_map, cost_radius);
         obstacles_map = static_map;
