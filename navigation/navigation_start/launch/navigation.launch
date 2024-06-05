@@ -13,8 +13,8 @@
   
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find navigation_start)/rviz/config.rviz"/>
   
-  <arg name="prohibition_map_file"  default="$(find navigation_start)/maps/prohibition_maps/room_512/map.yaml"/>
-  <arg name="static_map_file"  default="$(find navigation_start)/maps/maps/room_512/map.yaml"/>
+  <arg name="prohibition_map_file"  default="$(find navigation_start)/maps/prohibition_maps/tidbots/map.yaml"/>
+  <arg name="static_map_file"  default="$(find navigation_start)/maps/maps/tidbots/map.yaml"/>
   
   <arg name="cmd_vel_name" default="/hsrb/command_velocity"/>
   <arg name="laser_scan_topic" default="/hsrb/base_scan"/>
@@ -38,7 +38,7 @@
   <arg name="max_x" default="0.70"/>
   <arg name="min_y" default="-0.25"/>
   <arg name="max_y" default="0.25"/>
-  <arg name="min_z" default="0.05"/>
+  <arg name="min_z" default="0.01"/>
   <arg name="max_z" default="1.00"/>
 
   <group ns="hardware">
@@ -77,9 +77,10 @@
     <param name="cloud_points_threshold" value="$(arg cloud_points_threshold)"/>
     <param name="lidar_points_threshold" value="$(arg lidar_points_threshold)"/>
     
-    <param name="debug" value="False"/>
+    <param name="debug" value="True"/>
     
-    <param name="pot_fields_k_rej" value="0.4"/>
+    <param name="pot_fields_d0" value="0.40"/>
+    <param name="pot_fields_k_rej" value="5.7"/>
     
     <param name="max_x" value="$(arg max_x)"/>
     <param name="min_x" value="$(arg min_x)"/>
