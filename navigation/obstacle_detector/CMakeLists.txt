@@ -19,6 +19,9 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
 )
 
+find_package(OpenCV REQUIRED)
+set(OpenCV_INCLUDE_DIRS "/usr/local/include")
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -124,6 +127,7 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -154,4 +158,5 @@ add_dependencies(obs_detect_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 ## Specify libraries to link a library or executable target against
 target_link_libraries(obs_detect_node
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
 )
