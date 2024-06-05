@@ -11,6 +11,10 @@
 #include "tf/transform_listener.h"
 #include "tf_conversions/tf_eigen.h"
 
+//DEBUG
+#include "opencv2/core/core.hpp"
+#include "opencv2/highgui/highgui.hpp"
+
 #define RATE 30
 
 bool  debug  = false;
@@ -87,26 +91,43 @@ bool check_collision_risk_with_cloud(sensor_msgs::PointCloud2::Ptr msg, double& 
     int force_count = 0;
     rejection_force_x = 0;
     rejection_force_y = 0;
+    
+    //mask for vision
+    int w = msg->width;
+    int h = msg->height;
+    cv::Mat mask = cv::Mat::zeros(h, w, CV_8UC1);
+
     unsigned char* p = (unsigned char*)(&msg->data[0]);
     Eigen::Affine3d tf = get_transform_to_basefootprint(msg->header.frame_id);
     for(size_t i=0; i < msg->width*msg->height; i+=cloud_downsampling, p += cloud_downsampling*msg->point_step)
     {
+        float s = pot_fields_d0 / maxX;
         Eigen::Vector3d v(*((float*)(p)), *((float*)(p+4)), *((float*)(p+8)));
         v = tf * v;
         if(v.x() > minX && v.x() < optimal_x && v.y() > minY && v.y() < maxY && v.z() > minZ && v.z() < maxZ) obstacle_count ++;
-        if(v.z() > minZ && v.norm() < pot_fields_d0)
+        //if(v.z() > minZ && v.norm() < pot_fields_d0)
+        if(v.z() > minZ && v.norm() < maxX)
         {
-            float force_mag = pot_fields_k_rej*sqrt(1/v.norm() - 1/pot_fields_d0);
-            rejection_force_x -= force_mag*v.x();
-            rejection_force_y -= force_mag*v.y();
-            force_count++;
+            mask.data[i] = (unsigned char)255;
+            
+            float force_mag = s * pot_fields_k_rej*sqrt(1/v.norm() - 1/maxX);
+            if (!isnan(force_mag)){
+                rejection_force_x -= force_mag*v.x()/v.norm();
+                rejection_force_y -= force_mag*v.y()/v.norm();
+                force_count++;
+            }
         }
     }
     rejection_force_x = force_count > 0 ? rejection_force_x/force_count : 0;
     rejection_force_y = force_count > 0 ? rejection_force_y/force_count : 0;
-    if(debug)
-        std::cout<<"ObsDetector.->Cloud Size:"<<msg->width<<"x"<<msg->height<<"  Counter: "<< obstacle_count<<std::endl;
     
+    if(debug)
+    {
+        cv::imshow("OBSTACLE DETECTOR", mask);
+        if (rejection_force_y > 0)
+            std::cout << "ObsDetector.cloud->rejection_force_x: " << rejection_force_x << "  rejection_force_y: " << rejection_force_y << std::endl;
+        cv::waitKey(30);
+    }
     return obstacle_count > cloud_threshold;
 }
 
@@ -129,15 +150,17 @@ bool check_collision_risk_with_lidar(sensor_msgs::LaserScan::Ptr msg, double& re
         if(v.norm() < pot_fields_d0)
         {
             float force_mag = pot_fields_k_rej*sqrt(1/v.norm() - 1/pot_fields_d0);
-            rejection_force_x -= force_mag*v.x();
-            rejection_force_y -= force_mag*v.y();
+            rejection_force_x -= force_mag*v.x()/v.norm();
+            rejection_force_y -= force_mag*v.y()/v.norm();
             force_count++;
         }
     }
     rejection_force_x = force_count > 0 ? rejection_force_x/force_count : 0;
     rejection_force_y = force_count > 0 ? rejection_force_y/force_count : 0;
-    if(debug)
-        std::cout << "ObsDetector.->LaserScan Size: " << msg->ranges.size() << "  Counter: " << obstacle_count << std::endl;
+    if(debug){
+        if (obstacle_count > lidar_threshold)
+            std::cout << "ObsDetector.laser->rejection_force_x: " << rejection_force_x << "  rejection_force_y: " << rejection_force_y << std::endl;
+    }
     return obstacle_count > lidar_threshold;
 }
 
@@ -297,13 +320,19 @@ int main(int argc, char** argv)
             {
                 msg_rejection_force.x = rejection_force_lidar.x + rejection_force_cloud.x;
                 msg_rejection_force.y = rejection_force_lidar.y + rejection_force_cloud.y;
+
+                if (rejection_force_lidar.y > 0 && rejection_force_cloud.y > 0){
+                    msg_rejection_force.x = (rejection_force_lidar.x + rejection_force_cloud.x)/2;
+                    msg_rejection_force.y = (rejection_force_lidar.y + rejection_force_cloud.y)/2;
+                }
+
                 pub_pot_fields_rej.publish(msg_rejection_force);
                 pub_pot_fields_mrk.publish(get_force_arrow_markers(rejection_force_lidar, rejection_force_cloud));
             }
-            if(use_lidar  && no_data_lidar_counter++ > no_sensor_data_timeout*RATE)
-                std::cout << "ObsDetector.->WARNING!!! No lidar data received from topic: " << laser_scan_topic << std::endl;
-            if(use_cloud  && no_data_cloud_counter++ > no_sensor_data_timeout*RATE)
-                std::cout << "ObsDetector.->WARNING!!! No cloud data received from topic: " << point_cloud_topic << std::endl;              
+            //if(use_lidar  && no_data_lidar_counter++ > no_sensor_data_timeout*RATE)
+            //    std::cout << "ObsDetector.->WARNING!!! No lidar data received from topic: " << laser_scan_topic << std::endl;
+            //if(use_cloud  && no_data_cloud_counter++ > no_sensor_data_timeout*RATE)
+            //    std::cout << "ObsDetector.->WARNING!!! No cloud data received from topic: " << point_cloud_topic << std::endl;              
         }
         ros::spinOnce();
         loop.sleep();
