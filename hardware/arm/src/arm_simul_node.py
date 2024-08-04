@@ -18,7 +18,7 @@ def callbackPos(msg):
             goalAngles[i] = msg.data[i]
     
 def main():
-    print "INITIALIZING ARM NODE IN SIMULATION BY [EDD-II]"
+    print ("INITIALIZING ARM NODE IN SIMULATION BY [EDD-II]")
     ###Connection with ROS
     rospy.init_node("head_simul_node")
     br = tf.TransformBroadcaster()
@@ -41,6 +41,7 @@ def main():
     global goalAngles;
     global goalGripper
     global speeds
+    #goalAngles = [0, 0, 0, 0]
     goalAngles = [0, 0, 0, 0]
     angles = [0, 0, 0, 0]
     speeds = [0.01, 0.01, 0.01, 0.01]

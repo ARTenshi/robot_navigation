@@ -268,9 +268,10 @@ int main(int argc, char** argv)
     float alpha = 0.6548;
     float beta = 0.2;
     float linear_acceleration = 0.1;
+    // TODO
     float fine_dist_tolerance = 0.03;
     float coarse_dist_tolerance = 0.2;
-    
+    // float angle_tolerance = 0.01;
     float angle_tolerance = 0.05;
     bool  move_head = true;
 

@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   roscpp
   rospy
+  roslib
 )
 
 ## System dependencies are found with CMake's conventions
@@ -47,6 +48,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
   include
+  yaml-cpp
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -61,4 +63,5 @@ add_dependencies(${PROJECT_NAME}_node
 
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
+  yaml-cpp
 )

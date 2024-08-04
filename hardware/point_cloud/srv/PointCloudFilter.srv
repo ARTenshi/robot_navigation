@@ -1,0 +1,4 @@
+float32 min_height
+float32 max_height
+---
+sensor_msgs/PointCloud2 filtered_cloud

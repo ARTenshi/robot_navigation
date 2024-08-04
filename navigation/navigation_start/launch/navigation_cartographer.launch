@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
+  <!--include file="$(find hma_pcl_reconst)/launch/pcl_reconst.launch"/-->
+
   <remap from="/get_distance_map" to="/get_cartographer_map"/>
   <remap from="/static_obstacle_map_ref" to="/get_cartographer_map"/>
   
@@ -9,6 +11,7 @@
   
   <node name="killer_node" pkg="killer_node" type="killer_node.py" output="screen"/>
   <node name="fake_global_pose" pkg="killer_node" type="fake_global_pose.py" output="screen"/>
+
   
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find navigation_start)/rviz/config.rviz"/>
   
@@ -16,7 +19,8 @@
   
   <arg name="cmd_vel_name" default="/hsrb/command_velocity"/>
   <arg name="laser_scan_topic" default="/hsrb/base_scan"/>
-  <arg name="point_cloud_topic" default="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
+  <!--arg name="point_cloud_topic" default="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/-->
+  <arg name="point_cloud_topic" default="/hma_pcl_reconst/depth_registered/points"/>
   <arg name="point_cloud_topic2" default="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
   <arg name="bumper_f_topic" default="hsrb/base_f_bumper_sensor"/>
     
@@ -27,42 +31,61 @@
   <arg name="use_bumper" default="False"/>
   <arg name="use_pot_fields" default="True"/>
   
-  <arg name="cloud_downsampling" default="5"/>
-  <arg name="lidar_downsampling" default="1"/>
+  <arg name="cloud_downsampling" default="9"/>
+  <arg name="lidar_downsampling" default="2"/>
   <arg name="cloud_points_threshold" default="100"/>
   <arg name="lidar_points_threshold" default="20"/>
   
-  <arg name="min_x" default="0.27"/>
-  <arg name="max_x" default="0.70"/>
+
+  <!--障害物を検出する範囲を指定するパラメータ-->
+  <!--depth-->
+  <arg name="min_x" default="0.17"/>
+  <arg name="max_x" default="0.5"/>
+  <!--width, min_y is rightside-->
   <arg name="min_y" default="-0.25"/>
   <arg name="max_y" default="0.25"/>
+  <!--height-->
   <arg name="min_z" default="0.05"/>
-  <arg name="max_z" default="1.00"/>
+  <arg name="max_z" default="1.5"/>
+  <!--arg name="max_z" default="1.5"/-->
+
+  <!--set same param max_x-->
+  <arg name="pot_fields_d0" default="0.35"/>
+  <arg name="pot_fields_k_rej" default="0.5"/>
+  <!--arg name="pot_fields_d0" default="0.35"/>
+  <arg name="pot_fields_k_rej" default="2.0"/-->
    
   <group ns="hardware">
     <node name="head" pkg="head" type="head_node" output="screen"/>
     <node name="led" pkg="head" type="led_node" output="screen"/>
-    <node name="arm" pkg="arm" type="arm_node" output="screen"/>
+    <!--node name="arm" pkg="arm" type="arm_node" output="screen"/-->
+    <node name="arm" pkg="arm" type="arm_node" output="screen">
+    <rosparam param="torso_goal_pose">0.2</rosparam> <!--arm_lift, meter-->
+    <!--[arm_flex, arm_roll, wrist_flex, wrist_roll], radian-->
+    <rosparam param="arm_goal_pose">[-0.17, 2.27, -1.57, 0.0]</rosparam>
+    </node>
   </group>
   
   <node name="map_server_bypass" pkg="map_server_bypass" type="map_server_bypass_node" output="screen">
-    <param name="occupied_threshold" value="70"/>
+    <!--param name="occupied_threshold" value="70"/-->
+    <param name="occupied_threshold" value="10"/>
   </node>
   
-  <node name="path_planner" pkg="path_planner" type="path_planner_node" output="screen">
-    <param name="diagonal_paths" value="False"/>
+  <node name="path_planner" pkg="path_planner" type="path_planner_node" output="screen" respawn="true">
+    <param name="diagonal_paths" value="True"/>
   </node>
   
   <node name="simple_move"  pkg="simple_move"  type="simple_move_node"  output="screen">
+    <!--param name="max_linear_speed" value="0.8"/-->
     <param name="max_linear_speed" value="0.8"/>
-    <param name="max_angular_speed" value="1.25"/>
-    <param name="control_alpha" value="0.2"/>
-    <param name="control_beta" value="0.8"/>
+    <param name="max_angular_speed" value="1.5"/>
+    <param name="control_alpha" value="0.4"/>
+    <param name="control_beta" value="0.15"/>
     <param name="use_pot_fields" value="$(arg use_pot_fields)"/>
     <param name="cmd_vel_name" value="$(arg cmd_vel_name)"/>
   </node>
   
-  <node name="obs_detector"  pkg="obstacle_detector"  type="obs_detect_node"  output="screen">
+  <node name="obs_detector"  pkg="obstacle_detector"  type="obs_detect_node" output="screen" respawn="true">
     <param name="laser_scan_topic" value="$(arg laser_scan_topic)"/>
     <param name="point_cloud_topic" value="$(arg point_cloud_topic)"/>
     <param name="point_cloud_topic2" value="$(arg point_cloud_topic2)"/>
@@ -79,9 +102,13 @@
     <param name="cloud_points_threshold" value="$(arg cloud_points_threshold)"/>
     <param name="lidar_points_threshold" value="$(arg lidar_points_threshold)"/>
     
-    <param name="debug" value="False"/>
+    <param name="obs_detector_debug" value="False"/>
     
-    <param name="pot_fields_k_rej" value="0.25"/>
+    <!--param name="pot_fields_d0" value="0.35"/-->
+    <!--param name="pot_fields_k_rej" value="2.0"/-->
+    <param name="pot_fields_d0" value="$(arg pot_fields_d0)"/>
+    <param name="pot_fields_k_rej" value="$(arg pot_fields_k_rej)"/>
+    <!--param name="pot_fields_k_rej" value="0.4"/-->
     
     <param name="max_x" value="$(arg max_x)"/>
     <param name="min_x" value="$(arg min_x)"/>
@@ -91,8 +118,6 @@
     <param name="min_z" value="$(arg min_z)"/>
   </node>
   
-  <arg name="topic_name" default="/navigation/obs_detector/enable" />
-  <node pkg="rostopic" type="rostopic" name="rostopic_pub_node" output="screen" args="pub $(arg topic_name) std_msgs/Bool 'data: true'" />
   
   <node name="map_augmenter"  pkg="map_augmenter"  type="map_augmenter_node"  output="screen">
     <param name="laser_scan_topic" value="$(arg laser_scan_topic)"/>
@@ -108,8 +133,8 @@
     
     <param name="cloud_downsampling" value="$(arg cloud_downsampling)"/>
     
-    <param name="inflation_radius" value="0.22"/>
-    <param name="cost_radius" value="0.1"/>
+    <param name="inflation_radius" value="0.15"/>
+    <param name="cost_radius" value="0.20"/>
     
     <param name="max_x" value="$(arg max_x)"/>
     <param name="min_x" value="$(arg min_x)"/>
@@ -119,15 +144,24 @@
     <param name="min_z" value="$(arg min_z)"/>
 
   </node>
+
+  <arg name="topic_name" default="/navigation/obs_detector/enable" />
+  <node pkg="rostopic" type="rostopic" name="rostopic_pub_node" output="screen" args="pub $(arg topic_name) std_msgs/Bool 'data: true'" />
   
   <node name="prohibition_map_server" pkg="map_server" type="map_server" output="screen" args="$(arg prohibition_map_file)">
     <remap from="/static_map" to="/prohibition_map"/>
     <remap from="/map" to="/prohibition_layer_map"/>
   </node>
+
+
+
   
   <node name="mvn_pln"  pkg="mvn_pln"  type="mvn_pln_node"  output="screen">
     <remap from="/nav_control/goal" to="/move_base_simple/goal"/>
     <param name="patience" value="True"/>
   </node>
+
+  <!--call twice-->
+  <node pkg="rostopic" type="rostopic" name="rostopic_pub_node2" output="screen" args="pub $(arg topic_name) std_msgs/Bool 'data: true'" />
   
 </launch>

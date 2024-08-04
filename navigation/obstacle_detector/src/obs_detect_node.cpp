@@ -1,5 +1,6 @@
 #include "ros/ros.h"
 #include "std_msgs/Bool.h"
+#include "std_srvs/Trigger.h"
 #include "sensor_msgs/Range.h"
 #include "sensor_msgs/LaserScan.h"
 #include "sensor_msgs/PointCloud2.h"
@@ -14,6 +15,7 @@
 //DEBUG
 #include "opencv2/core/core.hpp"
 #include "opencv2/highgui/highgui.hpp"
+//
 
 #define RATE 30
 
@@ -74,6 +76,8 @@ void get_robot_pose(float& robot_x, float& robot_y, float& robot_t)
 
 float get_search_distance()
 {
+    ros::param::get("~max_x", maxX);
+
     float robot_x, robot_y, robot_a;
     get_robot_pose(robot_x, robot_y, robot_a);
     float dist_to_goal = sqrt(pow(global_goal_x - robot_x, 2) + pow(global_goal_x - robot_x, 2));
@@ -84,6 +88,10 @@ float get_search_distance()
 
 bool check_collision_risk_with_cloud(sensor_msgs::PointCloud2::Ptr msg, double& rejection_force_x, double& rejection_force_y)
 {
+    ros::param::get("/obs_detector/pot_fields_k_rej", pot_fields_k_rej);
+    ros::param::get("~pot_fields_d0", pot_fields_d0);
+    ros::param::get("~max_x", maxX);
+
     if(current_speed_linear <= 0 && !debug) return false;
     
     float optimal_x = get_search_distance();
@@ -133,6 +141,9 @@ bool check_collision_risk_with_cloud(sensor_msgs::PointCloud2::Ptr msg, double& 
 
 bool check_collision_risk_with_lidar(sensor_msgs::LaserScan::Ptr msg, double& rejection_force_x, double& rejection_force_y)
 {
+    ros::param::get("~pot_fields_k_rej", pot_fields_k_rej);
+    ros::param::get("~pot_fields_d0", pot_fields_d0);
+
     if(current_speed_linear <= 0 && !debug) return false;
     
     float optimal_x = get_search_distance();
@@ -178,8 +189,11 @@ void callback_point_cloud(sensor_msgs::PointCloud2::Ptr msg)
 
 void callback_goal_path(const nav_msgs::Path::ConstPtr& msg)
 {
-     global_goal_x = msg->poses[msg->poses.size() - 1].pose.position.x;
-     global_goal_y = msg->poses[msg->poses.size() - 1].pose.position.y;
+    //if (!msg->poses.empty()){
+    global_goal_x = msg->poses[msg->poses.size() - 1].pose.position.x;
+    global_goal_y = msg->poses[msg->poses.size() - 1].pose.position.y;
+    //}
+    //TODO MvnPln sending near goal status
 }
 
 void callbackEnable(const std_msgs::Bool::ConstPtr& msg)
@@ -206,6 +220,28 @@ void callback_cmd_vel(const geometry_msgs::Twist::ConstPtr& msg)
     current_speed_linear  = msg->linear.x;
     current_speed_angular = msg->angular.z;
 }
+
+bool callback_obstacle_in_front(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp)
+{
+    boost::shared_ptr<sensor_msgs::PointCloud2 const> shared_ptr_cloud;
+    boost::shared_ptr<sensor_msgs::LaserScan const>   shared_ptr_lidar;
+    sensor_msgs::PointCloud2::Ptr ptr_cloud(new sensor_msgs::PointCloud2());
+    sensor_msgs::LaserScan::Ptr   ptr_lidar(new sensor_msgs::LaserScan());
+    if(use_cloud) shared_ptr_cloud = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(point_cloud_topic,ros::Duration(10.0));
+    if(use_lidar) shared_ptr_lidar = ros::topic::waitForMessage<sensor_msgs::LaserScan>  (laser_scan_topic, ros::Duration(10.0));
+    if(use_cloud && shared_ptr_cloud) *ptr_cloud = *shared_ptr_cloud;
+    if(use_lidar && shared_ptr_lidar) *ptr_lidar = *shared_ptr_lidar;
+    double force_x, force_y;
+    resp.success = false;
+    bool debug_temp = debug;
+    debug = true;
+    resp.success |= use_cloud && check_collision_risk_with_cloud(ptr_cloud, force_x, force_y);
+    resp.success |= use_lidar && check_collision_risk_with_lidar(ptr_lidar, force_x, force_y);
+    debug = debug_temp;
+    return true; //This is the flag to indicate the service was executed succesfully, it does not indicate the obstacle
+}
+
+
 
 visualization_msgs::MarkerArray get_force_arrow_markers(geometry_msgs::Vector3& f1, geometry_msgs::Vector3& f2)
 {
@@ -243,6 +279,90 @@ visualization_msgs::MarkerArray get_force_arrow_markers(geometry_msgs::Vector3& 
     markers.markers.push_back(marker);
     return markers;
 }
+
+visualization_msgs::Marker createBoundingBoxMarker()
+{
+    ros::param::get("~max_x", maxX);
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = base_link_name;
+    marker.header.stamp = ros::Time::now();
+    marker.ns = "bounding_box";
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::CUBE;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = (maxX + minX) / 2.0;
+    marker.pose.position.y = (maxY + minY) / 2.0;
+    marker.pose.position.z = (maxZ + minZ) / 2.0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = maxX - minX;
+    marker.scale.y = maxY - minY;
+    marker.scale.z = maxZ - minZ;
+    marker.color.a = 0.5;
+    marker.color.r = 1.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+    return marker;
+}
+
+visualization_msgs::MarkerArray createPotFieldMarkers(geometry_msgs::Vector3& f1, geometry_msgs::Vector3& f2)
+{
+    visualization_msgs::MarkerArray markers;
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = base_link_name;
+    marker.header.stamp = ros::Time::now();
+    marker.ns = "pot_fields";
+    marker.type = visualization_msgs::Marker::ARROW;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = 0.1;  // arrow shaft
+    marker.scale.y = 0.2;  // arrow head
+    marker.color.a = 1.0; 
+
+    //lidar pot field
+    marker.id = 0;
+    marker.color.r = 0.0;
+    marker.color.g = 0.0;
+    marker.color.b = 1.0;
+    marker.points.push_back(geometry_msgs::Point());
+    geometry_msgs::Point point;
+    point.x = f1.x;
+    point.y = f1.y;
+    point.z = f1.z;
+    marker.points.push_back(point);
+    markers.markers.push_back(marker);
+
+    //pcl pot field
+    marker.id = 1;
+    marker.color.r = 0.0;
+    marker.color.g = 1.0;
+    marker.color.b = 0.0;
+    marker.points.clear();
+    marker.points.push_back(geometry_msgs::Point());
+    point.x = f2.x;
+    point.y = f2.y;
+    point.z = f2.z;
+    marker.points.push_back(point);
+    markers.markers.push_back(marker);
+
+    //lidar+pcl pot field
+    marker.id = 2;
+    marker.color.r = 1.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+    marker.points.clear();
+    marker.points.push_back(geometry_msgs::Point());
+    point.x = f1.x + f2.x;
+    point.y = f1.y + f2.y;
+    point.z = f1.z + f2.z;
+    marker.points.push_back(point);
+    markers.markers.push_back(marker);
+
+    return markers;
+}
+
 
 int main(int argc, char** argv)
 {
@@ -288,10 +408,25 @@ int main(int argc, char** argv)
     std::cout << (use_cloud ? point_cloud_topic : "" ) << " " << (use_lidar ? laser_scan_topic : "") << std::endl;
     boost::shared_ptr<sensor_msgs::PointCloud2 const> ptr_cloud_temp; 
     boost::shared_ptr<sensor_msgs::LaserScan const>   ptr_lidar_temp;
-    if(use_cloud) ptr_cloud_temp = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(point_cloud_topic,ros::Duration(10.0));
-    if(use_lidar) ptr_lidar_temp = ros::topic::waitForMessage<sensor_msgs::LaserScan>  (laser_scan_topic, ros::Duration(10.0));
-    if(use_cloud && ptr_cloud_temp == NULL) return -1;
-    if(use_lidar && ptr_lidar_temp == NULL) return -1;
+    //if(use_cloud) ptr_cloud_temp = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(point_cloud_topic,ros::Duration(10.0));
+    //if(use_lidar) ptr_lidar_temp = ros::topic::waitForMessage<sensor_msgs::LaserScan>  (laser_scan_topic, ros::Duration(10.0));
+    //if(use_cloud && ptr_cloud_temp == NULL) return -1;
+    //if(use_lidar && ptr_lidar_temp == NULL) return -1;
+    
+    for(int i=0; i<10 && use_cloud && ptr_cloud_temp==NULL; i++)
+        ptr_cloud_temp = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(point_cloud_topic,ros::Duration(1.0));
+    for(int i=0; i<10 && use_lidar && ptr_lidar_temp==NULL; i++)
+        ptr_lidar_temp = ros::topic::waitForMessage<sensor_msgs::LaserScan>  (laser_scan_topic, ros::Duration(1.0));
+    if(use_cloud && ptr_cloud_temp == NULL)
+    {
+        std::cout << "ObsDetector.->Cannot get first message for cloud from topic " << point_cloud_topic << std::endl;
+        return -1;
+    }
+    if(use_lidar && ptr_lidar_temp == NULL)
+    {
+    std::cout << "ObsDetector.->Cannot get first message for lidar from topic " << laser_scan_topic << std::endl;
+        return -1;
+    }
     std::cout << "ObsDetector.->First messages received..." << std::endl;
     
     std::cout << "ObsDetector.->Waiting for transforms to be available..." << std::endl;
@@ -309,9 +444,14 @@ int main(int argc, char** argv)
     ros::Publisher  pub_pot_fields_rej = n.advertise<geometry_msgs::Vector3>("/navigation/obs_detector/pf_rejection_force", 1);
     std_msgs::Bool msg_collision_risk;
     geometry_msgs::Vector3 msg_rejection_force;
+
+    //for visualize bbox and pot fields
+    ros::Publisher pub_bounding_box = n.advertise<visualization_msgs::Marker>("bounding_box_marker", 1);
+    ros::Publisher pub_pot_fields = n.advertise<visualization_msgs::MarkerArray>("pot_fields_marker", 1);
         
     while(ros::ok())
     {
+
         if(enable)
         {
             msg_collision_risk.data = collision_risk_lidar || collision_risk_cloud;
@@ -328,12 +468,21 @@ int main(int argc, char** argv)
 
                 pub_pot_fields_rej.publish(msg_rejection_force);
                 pub_pot_fields_mrk.publish(get_force_arrow_markers(rejection_force_lidar, rejection_force_cloud));
+
+		//for visualize bbox
+		visualization_msgs::Marker bounding_box_marker = createBoundingBoxMarker();
+                pub_bounding_box.publish(bounding_box_marker);
+		//for visualize pot fields
+      	        visualization_msgs::MarkerArray pot_field_markers = createPotFieldMarkers(rejection_force_lidar, rejection_force_cloud);
+	        pub_pot_fields.publish(pot_field_markers);
+
             }
             //if(use_lidar  && no_data_lidar_counter++ > no_sensor_data_timeout*RATE)
             //    std::cout << "ObsDetector.->WARNING!!! No lidar data received from topic: " << laser_scan_topic << std::endl;
             //if(use_cloud  && no_data_cloud_counter++ > no_sensor_data_timeout*RATE)
             //    std::cout << "ObsDetector.->WARNING!!! No cloud data received from topic: " << point_cloud_topic << std::endl;              
         }
+
         ros::spinOnce();
         loop.sleep();
     }

@@ -1,4 +1,6 @@
 #include "PathPlanner.h"
+#include <cmath>
+#include <cstdlib>
 
 bool PathPlanner::AStar(nav_msgs::OccupancyGrid& map, nav_msgs::OccupancyGrid& cost_map,
                       geometry_msgs::Pose& start_pose, geometry_msgs::Pose& goal_pose, bool diagonal_paths, nav_msgs::Path& result_path)
@@ -17,9 +19,25 @@ bool PathPlanner::AStar(nav_msgs::OccupancyGrid& map, nav_msgs::OccupancyGrid& c
     int idx_start = idx_start_y*map.info.width + idx_start_x;
     int idx_goal  = idx_goal_y *map.info.width + idx_goal_x;
 
+    //double distance = 0.1;
+    //double angle = 1.414213562;
+
     if(map.data[idx_goal] != 0)
     {
-        std::cout << "PathPlanner.->Goal point is inside non-free space!!!!" << std::endl;
+        std::cout << "PathPlanner.->Goal point is inside non-free space!!!! >>>> RE-PLANNING" << std::endl;
+
+
+	//double new_goal_x = goal_pose.position.x - distance * sin(angle);
+	//double new_goal_y = goal_pose.position.y - distance * cos(angle);
+        //distance ++;
+	//goal_pose.position.x = new_goal_x;
+	//goal_pose.position.y = new_goal_y;
+
+        //// Recalculate the goal indices
+        //idx_goal_x  = (int)((goal_pose.position.x  - map.info.origin.position.x)/map.info.resolution);
+        //idx_goal_y  = (int)((goal_pose.position.y  - map.info.origin.position.y)/map.info.resolution);
+        //idx_goal = idx_goal_y * map.info.width + idx_goal_x;
+
         return false;
     }
     if(map.data[idx_start] != 0)
@@ -27,6 +45,8 @@ bool PathPlanner::AStar(nav_msgs::OccupancyGrid& map, nav_msgs::OccupancyGrid& c
         std::cout << "PathPlanner.->Start point is inside non-free space!!!!" << std::endl;
         return false;
     }
+    
+    
 
     std::vector<Node> nodes;
     Node* current_node; 
@@ -117,6 +137,7 @@ bool PathPlanner::AStar(nav_msgs::OccupancyGrid& map, nav_msgs::OccupancyGrid& c
     std::cout << "PathCalculator.->Resulting path by A* has " << result_path.poses.size() << " points." << std::endl;
     return true;
 }
+
 
 nav_msgs::Path PathPlanner::SmoothPath(nav_msgs::Path& path, float weight_data, float weight_smooth, float tolerance)
 {
