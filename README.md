@@ -1,15 +1,6 @@
 
 # PUMAS Navigation for RoboCup2024 DSPL
 
-# How to usr this repository
-## SLAM
-docker compose -f slam-docker-compose.yml build
-docker compose -f slam-docker-compose.yml up
-
-## LOCALIZATION
-docker compose -f localization-docker-compose.yml build
-docker compose -f localization-docker-compose.yml up
-
 ## MAP BUILDER
 following readme at hsr_hector pkg
 
