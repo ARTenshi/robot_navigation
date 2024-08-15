@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(obstacle_detector)
+project(potential_fields)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -143,7 +143,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(obs_detect_node src/obs_detect_node.cpp)
+add_executable(pot_fields_node src/pot_fields_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -153,10 +153,10 @@ add_executable(obs_detect_node src/obs_detect_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(obs_detect_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(pot_fields_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(obs_detect_node
+target_link_libraries(pot_fields_node
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
 )
