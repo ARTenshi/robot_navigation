@@ -18,8 +18,8 @@
 #define SM_WAITING_FOR_MOVE_BACKWARDS 18
 #define SM_CHECK_IF_OBSTACLES 21
 #define SM_WAIT_FOR_NO_OBSTACLES 22
-#define SM_ENABLE_OBS_DETECT 23
-#define SM_WAIT_FOR_OBS_DETECT 24
+#define SM_ENABLE_POT_FIELDS 23
+#define SM_WAIT_FOR_POT_FIELDS 24
 #define SM_START_MOVE_PATH 3
 #define SM_WAIT_FOR_MOVE_FINISHED 4
 #define SM_COLLISION_DETECTED 5
@@ -142,10 +142,10 @@ int main(int argc, char** argv)
     ros::Subscriber sub_generalStop        = n.subscribe("/stop", 10, callback_general_stop);
     ros::Subscriber sub_navCtrlStop        = n.subscribe("/navigation/stop", 10, callback_navigation_stop);               
     ros::Subscriber sub_simple_goal        = n.subscribe("/nav_control/goal", 10, callback_simple_goal);
-    ros::Subscriber sub_collision_risk     = n.subscribe("/navigation/obs_detector/collision_risk", 10, callback_collision_risk);
+    ros::Subscriber sub_collision_risk     = n.subscribe("/navigation/potential_fields/collision_risk", 10, callback_collision_risk);
     ros::Subscriber sub_move_goal_status   = n.subscribe("/simple_move/goal_reached", 10, callback_simple_move_goal_status);
     ros::Subscriber sub_set_patience       = n.subscribe("/navigation/set_patience", 10, callback_set_patience);
-    ros::Publisher pub_obs_detector_enable = n.advertise<std_msgs::Bool   >("/navigation/obs_detector/enable", 1);
+    ros::Publisher pub_pot_fields_enable = n.advertise<std_msgs::Bool   >("/navigation/potential_fields/enable", 1);
     ros::Publisher pub_goal_path           = n.advertise<nav_msgs::Path   >("/simple_move/goal_path", 1);
     ros::Publisher pub_goal_dist_angle     = n.advertise<std_msgs::Float32MultiArray>("/simple_move/goal_dist_angle", 1);
     ros::Publisher pub_status              = n.advertise<actionlib_msgs::GoalStatus>("/navigation/status", 10);
@@ -221,7 +221,7 @@ int main(int argc, char** argv)
                     state = SM_CHECK_IF_OBSTACLES;
             }
             else
-                state = SM_ENABLE_OBS_DETECT;
+                state = SM_ENABLE_POT_FIELDS;
             break;
 
         case SM_CHECK_IF_INSIDE_OBSTACLES:
@@ -292,17 +292,17 @@ int main(int argc, char** argv)
             break;
 
             
-        case SM_ENABLE_OBS_DETECT:
+        case SM_ENABLE_POT_FIELDS:
             msg_bool.data = true;
-            pub_obs_detector_enable.publish(msg_bool);
-            std::cout << "MvnPln.->Obstacle detector enable flag sent. Waiting for obs detector to be enabled..." << std::endl;
-            state = SM_WAIT_FOR_OBS_DETECT;
+            pub_pot_fields_enable.publish(msg_bool);
+            std::cout << "MvnPln.->Potential fields enable flag sent. Waiting for potential fields to be enabled..." << std::endl;
+            state = SM_WAIT_FOR_POT_FIELDS;
             break;
             
 
-        case SM_WAIT_FOR_OBS_DETECT:
-            ros::topic::waitForMessage<std_msgs::Bool>("/navigation/obs_detector/collision_risk", ros::Duration(100.0));
-            std::cout << "MvnPln.->Obstacle detector is now available." << std::endl;
+        case SM_WAIT_FOR_POT_FIELDS:
+            ros::topic::waitForMessage<std_msgs::Bool>("/navigation/potential_fields/collision_risk", ros::Duration(100.0));
+            std::cout << "MvnPln.->Potential fields is now available." << std::endl;
             state = SM_START_MOVE_PATH;
             break;
 
@@ -332,7 +332,7 @@ int main(int argc, char** argv)
                 simple_move_goal_status.status = 0;
                 std::cout << "MvnPln.->Path followed succesfully. " << std::endl;
                 msg_bool.data = false;
-                pub_obs_detector_enable.publish(msg_bool);
+                pub_pot_fields_enable.publish(msg_bool);
                 state = SM_CORRECT_FINAL_ANGLE;
             }
             else if(collision_risk)

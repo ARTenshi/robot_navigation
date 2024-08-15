@@ -123,9 +123,9 @@ bool check_collision_risk_with_cloud(sensor_msgs::PointCloud2::Ptr msg, double& 
     
     if(debug)
     {
-        cv::imshow("OBSTACLE DETECTOR", mask);
+        cv::imshow("POTENTIAL FIELDS OBSTACLE", mask);
         if (rejection_force_y > 0)
-            std::cout << "ObsDetector.cloud->rejection_force_x: " << rejection_force_x << "  rejection_force_y: " << rejection_force_y << std::endl;
+            std::cout << "PotentialFields.cloud->rejection_force_x: " << rejection_force_x << "  rejection_force_y: " << rejection_force_y << std::endl;
         cv::waitKey(30);
     }
     return obstacle_count > cloud_threshold;
@@ -159,7 +159,7 @@ bool check_collision_risk_with_lidar(sensor_msgs::LaserScan::Ptr msg, double& re
     rejection_force_y = force_count > 0 ? rejection_force_y/force_count : 0;
     if(debug){
         if (obstacle_count > lidar_threshold)
-            std::cout << "ObsDetector.laser->rejection_force_x: " << rejection_force_x << "  rejection_force_y: " << rejection_force_y << std::endl;
+            std::cout << "PotentialFields.laser->rejection_force_x: " << rejection_force_x << "  rejection_force_y: " << rejection_force_y << std::endl;
     }
     return obstacle_count > lidar_threshold;
 }
@@ -186,13 +186,13 @@ void callbackEnable(const std_msgs::Bool::ConstPtr& msg)
 {
     if(msg->data)
     {
-        std::cout<<"ObsDetector.->Starting detection using: "<<(use_lidar?"lidar ":"")<<(use_cloud?"point_cloud":"")<<std::endl;
+        std::cout<<"PotentialFields.->Starting detection using: "<<(use_lidar?"lidar ":"")<<(use_cloud?"point_cloud":"")<<std::endl;
         if(use_cloud ) sub_cloud = nh->subscribe(point_cloud_topic, 1, callback_point_cloud );
         if(use_lidar ) sub_lidar = nh->subscribe(laser_scan_topic , 1, callback_lidar);
     }
     else
     {
-        std::cout << "ObsDetector.->Stopping obstacle detection..." <<std::endl;
+        std::cout << "PotentialFields.->Stopping obstacle detection..." <<std::endl;
         if(use_cloud)   sub_cloud.shutdown();
         if(use_lidar)   sub_lidar.shutdown();
         collision_risk_lidar = false;
@@ -275,16 +275,16 @@ int main(int argc, char** argv)
     ros::param::param<std::string>("~laser_scan_topic" ,  laser_scan_topic , "/scan"  );
     ros::param::param<std::string>("/base_link_name"   , base_link_name, "base_link");
 
-    std::cout << "ObsDetector.->Starting obs detection using: "<<(use_lidar?"lidar ":"")<<(use_cloud?"point_cloud ":"")<<std::endl;
-    std::cout << "ObsDetector.->Using parameters: min_x=" << minX << "  max_x=" << maxX << "  min_y=" << minY << "  max_y=";
+    std::cout << "PotentialFields.->Starting obs detection using: "<<(use_lidar?"lidar ":"")<<(use_cloud?"point_cloud ":"")<<std::endl;
+    std::cout << "PotentialFields.->Using parameters: min_x=" << minX << "  max_x=" << maxX << "  min_y=" << minY << "  max_y=";
     std::cout << maxY << "  min_z=" << minZ << "  max_z=" << maxZ << std::endl;
-    std::cout << "ObsDetector.->Point cloud topic: "<<point_cloud_topic<<"   lidar topic name: " << laser_scan_topic << std::endl;
-    std::cout << "ObsDetector.->Params for cloud: threshold="<<cloud_threshold<<"  downsampling="<<cloud_downsampling<<std::endl;
-    std::cout << "ObsDetector.->Params for lidar: threshold="<<lidar_threshold<<"  downsampling="<<lidar_downsampling<<std::endl;
-    std::cout << "ObsDetector.->Calculate potential fields: " << (use_pot_fields?"True":"False") << std::endl;
-    std::cout << "ObsDetector.->Base link frame: " << base_link_name << std::endl;
+    std::cout << "PotentialFields.->Point cloud topic: "<<point_cloud_topic<<"   lidar topic name: " << laser_scan_topic << std::endl;
+    std::cout << "PotentialFields.->Params for cloud: threshold="<<cloud_threshold<<"  downsampling="<<cloud_downsampling<<std::endl;
+    std::cout << "PotentialFields.->Params for lidar: threshold="<<lidar_threshold<<"  downsampling="<<lidar_downsampling<<std::endl;
+    std::cout << "PotentialFields.->Calculate potential fields: " << (use_pot_fields?"True":"False") << std::endl;
+    std::cout << "PotentialFields.->Base link frame: " << base_link_name << std::endl;
 
-    std::cout << "ObsDetector.->Waiting for first messages from active sensors: ";
+    std::cout << "PotentialFields.->Waiting for first messages from active sensors: ";
     std::cout << (use_cloud ? point_cloud_topic : "" ) << " " << (use_lidar ? laser_scan_topic : "") << std::endl;
     boost::shared_ptr<sensor_msgs::PointCloud2 const> ptr_cloud_temp; 
     boost::shared_ptr<sensor_msgs::LaserScan const>   ptr_lidar_temp;
@@ -292,21 +292,21 @@ int main(int argc, char** argv)
     if(use_lidar) ptr_lidar_temp = ros::topic::waitForMessage<sensor_msgs::LaserScan>  (laser_scan_topic, ros::Duration(10.0));
     if(use_cloud && ptr_cloud_temp == NULL) return -1;
     if(use_lidar && ptr_lidar_temp == NULL) return -1;
-    std::cout << "ObsDetector.->First messages received..." << std::endl;
+    std::cout << "PotentialFields.->First messages received..." << std::endl;
     
-    std::cout << "ObsDetector.->Waiting for transforms to be available..." << std::endl;
+    std::cout << "PotentialFields.->Waiting for transforms to be available..." << std::endl;
     tf_listener->waitForTransform("map", base_link_name, ros::Time(0), ros::Duration(10.0));
-    std::cout << "ObsDetector.->Waiting for sensor transforms" << std::endl;
+    std::cout << "PotentialFields.->Waiting for sensor transforms" << std::endl;
     if(use_cloud) tf_listener->waitForTransform(base_link_name,ptr_cloud_temp->header.frame_id,ros::Time(0),ros::Duration(10.0));
     if(use_lidar) tf_listener->waitForTransform(base_link_name,ptr_lidar_temp->header.frame_id,ros::Time(0),ros::Duration(10.0));
-    std::cout << "ObsDetector.->Sensor transforms are now available"<< std::endl;
+    std::cout << "PotentialFields.->Sensor transforms are now available"<< std::endl;
 
-    ros::Subscriber subEnable   = n.subscribe("/navigation/obs_detector/enable", 1, callbackEnable);
+    ros::Subscriber subEnable   = n.subscribe("/navigation/potential_fields/enable", 1, callbackEnable);
     ros::Subscriber sub_cmd_vel = n.subscribe("/cmd_vel", 1, callback_cmd_vel);
     ros::Subscriber sub_goal_path      = n.subscribe("/simple_move/goal_path", 10, callback_goal_path);
-    ros::Publisher  pub_collision_risk = n.advertise<std_msgs::Bool>("/navigation/obs_detector/collision_risk", 1);
-    ros::Publisher  pub_pot_fields_mrk = n.advertise<visualization_msgs::MarkerArray>("/navigation/obs_detector/pot_field_markers", 1);
-    ros::Publisher  pub_pot_fields_rej = n.advertise<geometry_msgs::Vector3>("/navigation/obs_detector/pf_rejection_force", 1);
+    ros::Publisher  pub_collision_risk = n.advertise<std_msgs::Bool>("/navigation/potential_fields/collision_risk", 1);
+    ros::Publisher  pub_pot_fields_mrk = n.advertise<visualization_msgs::MarkerArray>("/navigation/potential_fields/pot_field_markers", 1);
+    ros::Publisher  pub_pot_fields_rej = n.advertise<geometry_msgs::Vector3>("/navigation/potential_fields/pf_rejection_force", 1);
     std_msgs::Bool msg_collision_risk;
     geometry_msgs::Vector3 msg_rejection_force;
         
@@ -330,9 +330,9 @@ int main(int argc, char** argv)
                 pub_pot_fields_mrk.publish(get_force_arrow_markers(rejection_force_lidar, rejection_force_cloud));
             }
             //if(use_lidar  && no_data_lidar_counter++ > no_sensor_data_timeout*RATE)
-            //    std::cout << "ObsDetector.->WARNING!!! No lidar data received from topic: " << laser_scan_topic << std::endl;
+            //    std::cout << "PotentialFields.->WARNING!!! No lidar data received from topic: " << laser_scan_topic << std::endl;
             //if(use_cloud  && no_data_cloud_counter++ > no_sensor_data_timeout*RATE)
-            //    std::cout << "ObsDetector.->WARNING!!! No cloud data received from topic: " << point_cloud_topic << std::endl;              
+            //    std::cout << "PotentialFields.->WARNING!!! No cloud data received from topic: " << point_cloud_topic << std::endl;              
         }
         ros::spinOnce();
         loop.sleep();
