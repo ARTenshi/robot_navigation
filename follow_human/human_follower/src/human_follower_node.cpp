@@ -149,7 +149,7 @@ int main(int argc, char** argv)
     if(ros::param::has("~head_topic"))
         ros::param::get("~head_topic", head_topic);
     
-    ros::Subscriber sub_rejection_force  = n->subscribe("/navigation/obs_detector/pf_rejection_force", 1, callback_rejection_force);
+    ros::Subscriber sub_rejection_force  = n->subscribe("/navigation/potential_fields/pf_rejection_force", 1, callback_rejection_force);
     ros::Subscriber sub_enable = n->subscribe("/hri/human_following/enable", 1, callback_enable);
     ros::Subscriber sub_stop   = n->subscribe("/stop", 1, callback_stop);
     listener = new tf::TransformListener();
