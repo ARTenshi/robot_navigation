@@ -33,10 +33,10 @@
   <arg name="lidar_points_threshold" default="20"/>
   
   <arg name="min_x" default="0.27"/>
-  <arg name="max_x" default="0.70"/>
+  <arg name="max_x" default="0.50"/>
   <arg name="min_y" default="-0.25"/>
   <arg name="max_y" default="0.25"/>
-  <arg name="min_z" default="0.05"/>
+  <arg name="min_z" default="0.01"/>
   <arg name="max_z" default="1.00"/>
    
   <group ns="hardware">
@@ -81,7 +81,8 @@
     
     <param name="debug" value="False"/>
     
-    <param name="pot_fields_k_rej" value="0.25"/>
+    <param name="pot_fields_d0" value="0.40"/>
+    <param name="pot_fields_k_rej" value="5.7"/>
     
     <param name="max_x" value="$(arg max_x)"/>
     <param name="min_x" value="$(arg min_x)"/>
