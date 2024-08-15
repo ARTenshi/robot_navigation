@@ -124,7 +124,7 @@ bool check_collision_risk_with_cloud(sensor_msgs::PointCloud2::Ptr msg, double& 
     if(debug)
     {
         cv::imshow("POTENTIAL FIELDS OBSTACLE", mask);
-        if (rejection_force_y > 0)
+        if (rejection_force_y != 0)
             std::cout << "PotentialFields.cloud->rejection_force_x: " << rejection_force_x << "  rejection_force_y: " << rejection_force_y << std::endl;
         cv::waitKey(30);
     }
@@ -158,7 +158,7 @@ bool check_collision_risk_with_lidar(sensor_msgs::LaserScan::Ptr msg, double& re
     rejection_force_x = force_count > 0 ? rejection_force_x/force_count : 0;
     rejection_force_y = force_count > 0 ? rejection_force_y/force_count : 0;
     if(debug){
-        if (obstacle_count > lidar_threshold)
+        if (obstacle_count > lidar_threshold && rejection_force_y != 0)
             std::cout << "PotentialFields.laser->rejection_force_x: " << rejection_force_x << "  rejection_force_y: " << rejection_force_y << std::endl;
     }
     return obstacle_count > lidar_threshold;
