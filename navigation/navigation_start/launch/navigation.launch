@@ -35,7 +35,7 @@
   <arg name="lidar_points_threshold" default="20"/>
   
   <arg name="min_x" default="0.27"/>
-  <arg name="max_x" default="0.70"/>
+  <arg name="max_x" default="0.50"/>
   <arg name="min_y" default="-0.25"/>
   <arg name="max_y" default="0.25"/>
   <arg name="min_z" default="0.01"/>
