@@ -18,8 +18,8 @@
 #define SM_WAITING_FOR_MOVE_BACKWARDS 18
 #define SM_CHECK_IF_OBSTACLES 21
 #define SM_WAIT_FOR_NO_OBSTACLES 22
-#define SM_ENABLE_POT_FIELDS 23
-#define SM_WAIT_FOR_POT_FIELDS 24
+#define SM_ENABLE_OBS_DETECT 23
+#define SM_WAIT_FOR_OBS_DETECT 24
 #define SM_START_MOVE_PATH 3
 #define SM_WAIT_FOR_MOVE_FINISHED 4
 #define SM_COLLISION_DETECTED 5
@@ -111,41 +111,47 @@ int publish_status(int status, int id, std::string text, ros::Publisher& pub)
 
 int main(int argc, char** argv)
 {
-    std::cout << "INITIALIZING MVN_PLN NODE BY MARCO NEGRETE..." << std::endl;
+    std::cout << "INITIALIZING MOVING PLANNER NODE BY MARCO NEGRETE..." << std::endl;
     ros::init(argc, argv, "mvn_pln");
     ros::NodeHandle n;
     tf::TransformListener listener;
     
     float proximity_criterion = 2.0;
+    float move_error_threshold = 0.03;
+
     if(ros::param::has("~patience"))
         ros::param::get("~patience", patience);
     if(ros::param::has("~proximity_criterion"))
         ros::param::get("~proximity_criterion", proximity_criterion);
     if(ros::param::has("/base_link_name"))
         ros::param::get("/base_link_name", base_link_name);
+    if(ros::param::has("~move_error_threshold"))
+        ros::param::get("~move_error_threshold", move_error_threshold);
+
 
     std::cout << "MvnPln.->Patience: " << (patience?"True":"False") << "  Proximity criterion: " << proximity_criterion;
     std::cout << "  base link name: " << base_link_name << std::endl;
+    std::cout << "  move error threshold: " << move_error_threshold << std::endl;
     std::cout << "MvnPln.->Waiting for localization transform..." << std::endl;
-    listener.waitForTransform("map", base_link_name, ros::Time(0), ros::Duration(1000.0));
+    listener.waitForTransform("map", base_link_name, ros::Time(0), ros::Duration(10.0));
     std::cout << "MvnPln.->Localization transform is ready ..." << std::endl;
     std::cout << "MvnPln.->Waiting for path planner to be ready..." << std::endl;
-    ros::service::waitForService("/path_planner/plan_path_with_static"   , ros::Duration(1000));
-    ros::service::waitForService("/path_planner/plan_path_with_augmented", ros::Duration(10000));
+    ros::service::waitForService("/path_planner/plan_path_with_static"   , ros::Duration(10));
+    ros::service::waitForService("/path_planner/plan_path_with_augmented", ros::Duration(10));
     std::cout << "MvnPln.->Path planner is ready." << std::endl;
     std::cout << "mvnPln.->Waiting for map augmenter to be ready..." << std::endl;
-    ros::service::waitForService("/map_augmenter/get_augmented_map"     , ros::Duration(1000));
-    ros::service::waitForService("/map_augmenter/get_augmented_cost_map", ros::Duration(1000));
-    ros::service::waitForService("/map_augmenter/are_there_obstacles"   , ros::Duration(1000));
+    ros::service::waitForService("/map_augmenter/get_augmented_map"     , ros::Duration(10));
+    ros::service::waitForService("/map_augmenter/get_augmented_cost_map", ros::Duration(10));
+    ros::service::waitForService("/map_augmenter/are_there_obstacles"   , ros::Duration(10));
     std::cout << "MvnPln.->Map Augmenter is ready..." << std::endl;
     
     ros::Subscriber sub_generalStop        = n.subscribe("/stop", 10, callback_general_stop);
     ros::Subscriber sub_navCtrlStop        = n.subscribe("/navigation/stop", 10, callback_navigation_stop);               
     ros::Subscriber sub_simple_goal        = n.subscribe("/nav_control/goal", 10, callback_simple_goal);
-    ros::Subscriber sub_collision_risk     = n.subscribe("/navigation/potential_fields/collision_risk", 10, callback_collision_risk);
+    ros::Subscriber sub_collision_risk     = n.subscribe("/navigation/obs_detector/collision_risk", 10, callback_collision_risk);
     ros::Subscriber sub_move_goal_status   = n.subscribe("/simple_move/goal_reached", 10, callback_simple_move_goal_status);
     ros::Subscriber sub_set_patience       = n.subscribe("/navigation/set_patience", 10, callback_set_patience);
-    ros::Publisher pub_pot_fields_enable = n.advertise<std_msgs::Bool   >("/navigation/potential_fields/enable", 1);
+    ros::Publisher pub_obs_detector_enable = n.advertise<std_msgs::Bool   >("/navigation/obs_detector/enable", 1);
     ros::Publisher pub_goal_path           = n.advertise<nav_msgs::Path   >("/simple_move/goal_path", 1);
     ros::Publisher pub_goal_dist_angle     = n.advertise<std_msgs::Float32MultiArray>("/simple_move/goal_dist_angle", 1);
     ros::Publisher pub_status              = n.advertise<actionlib_msgs::GoalStatus>("/navigation/status", 10);
@@ -190,7 +196,9 @@ int main(int argc, char** argv)
         switch(state)
         {
         case SM_INIT:
-            std::cout << "MvnPln.->MVN PLN READY. Waiting for new goal. " << std::endl;
+            //std::cout << "MvnPln.->MVN PLN READY. Waiting for new goal. " << std::endl;
+	    ROS_WARN("Pumas Navigation. -> Ready!!!!!!!!! ");
+	    ROS_WARN("MvnPln.->MVN PLN READY. Waiting for new goal.");
             state = SM_WAITING_FOR_TASK;
             break;
 
@@ -221,7 +229,7 @@ int main(int argc, char** argv)
                     state = SM_CHECK_IF_OBSTACLES;
             }
             else
-                state = SM_ENABLE_POT_FIELDS;
+                state = SM_ENABLE_OBS_DETECT;
             break;
 
         case SM_CHECK_IF_INSIDE_OBSTACLES:
@@ -292,17 +300,17 @@ int main(int argc, char** argv)
             break;
 
             
-        case SM_ENABLE_POT_FIELDS:
+        case SM_ENABLE_OBS_DETECT:
             msg_bool.data = true;
-            pub_pot_fields_enable.publish(msg_bool);
-            std::cout << "MvnPln.->Potential fields enable flag sent. Waiting for potential fields to be enabled..." << std::endl;
-            state = SM_WAIT_FOR_POT_FIELDS;
+            pub_obs_detector_enable.publish(msg_bool);
+            std::cout << "MvnPln.->Obstacle detector enable flag sent. Waiting for obs detector to be enabled..." << std::endl;
+            state = SM_WAIT_FOR_OBS_DETECT;
             break;
             
 
-        case SM_WAIT_FOR_POT_FIELDS:
-            ros::topic::waitForMessage<std_msgs::Bool>("/navigation/potential_fields/collision_risk", ros::Duration(100.0));
-            std::cout << "MvnPln.->Potential fields is now available." << std::endl;
+        case SM_WAIT_FOR_OBS_DETECT:
+            ros::topic::waitForMessage<std_msgs::Bool>("/navigation/obs_detector/collision_risk", ros::Duration(100.0));
+            std::cout << "MvnPln.->Obstacle detector is now available." << std::endl;
             state = SM_START_MOVE_PATH;
             break;
 
@@ -312,27 +320,42 @@ int main(int argc, char** argv)
             collision_risk = false;
             simple_move_sequencer++;
             path.header.seq = simple_move_sequencer;
+            
+            //add 2024/09/12
+
+            if (path.poses.size() > 0){
             pub_goal_path.publish(path);
             simple_move_goal_status.status = 0;
             state = SM_WAIT_FOR_MOVE_FINISHED;
+            }
+            else{
+            state = SM_CORRECT_FINAL_ANGLE;
+            //state = SM_FINAL;
+            }
+
             break;
 
 
         case SM_WAIT_FOR_MOVE_FINISHED:
             get_robot_position(listener, robot_x, robot_y, robot_a);
             error = sqrt(pow(global_goal.position.x - robot_x, 2) + pow(global_goal.position.y - robot_y, 2));
-            if(error < proximity_criterion && !near_goal_sent)
+	    ROS_WARN("MvnPln. -> will move error: %f", error);
+
+            if(error < proximity_criterion && !near_goal_sent) //or error > move_error_threshold)
+            //if(error < proximity_criterion && !near_goal_sent && error > 0.03) //hsrb
+            //if(error < proximity_criterion && !near_goal_sent && error > 0.001) //sim
             {
                 near_goal_sent = true;
                 std::cout << "MvnPln.->Error less than proximity criterion. Sending near goal point status." << std::endl;
                 publish_status(actionlib_msgs::GoalStatus::ACTIVE, goal_id, "Near goal point", pub_status);
             }
+
             if(simple_move_goal_status.status == actionlib_msgs::GoalStatus::SUCCEEDED && simple_move_status_id == simple_move_sequencer)
             {
                 simple_move_goal_status.status = 0;
                 std::cout << "MvnPln.->Path followed succesfully. " << std::endl;
                 msg_bool.data = false;
-                pub_pot_fields_enable.publish(msg_bool);
+                pub_obs_detector_enable.publish(msg_bool);
                 state = SM_CORRECT_FINAL_ANGLE;
             }
             else if(collision_risk)

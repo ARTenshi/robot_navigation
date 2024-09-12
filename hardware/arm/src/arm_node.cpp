@@ -16,7 +16,6 @@
 
 
 float torso_goal_pose;
-
 std::vector<float>  arm_goal_pose;
 std::vector<float>  arm_complete_cp;
 std::vector<float>  gripper_goal_pose;
@@ -113,7 +112,7 @@ int main(int argc, char **argv)
 {
   std::cout << std::endl << "------------------------->" << std::endl;
   std::cout << "INITIALIZING ARM_BRIDGE_NODE BY [EDD-II] " << std::endl;
-  ros::init(argc, argv, "arm_bridge");
+  ros::init(argc, argv, "arm");
 
   std_msgs::Float32 msg_torso_current_pose;
   std_msgs::Float32MultiArray msg_arm_current_pose;
@@ -121,7 +120,37 @@ int main(int argc, char **argv)
   std_msgs::Bool msg_torso_goal_pose;
 
   // initalize ROS publisher
-  ros::NodeHandle  n;
+  ros::NodeHandle  n("~");
+  ros::NodeHandle  pn("~");
+
+  //defaults
+  //float torso_goal_pose;
+  //std::vector<float> arm_goal_pose;
+  torso_goal_pose = 0.0;
+  arm_goal_pose = {0.0, -1.5707, -1.5707, 0.0};
+
+  pn.getParam("torso_goal_pose", torso_goal_pose);
+
+  //pn.getParam("arm_goal_pose", arm_goal_pose, std::vector<float>({0.0, -1.5707, -1.5707, 0.0}));
+  
+  // Load parameters from ROS parameter server using XmlRpcValue
+  XmlRpc::XmlRpcValue arm_goal_param;
+  if (pn.getParam("arm_goal_pose", arm_goal_param)) {
+    if (arm_goal_param.getType() == XmlRpc::XmlRpcValue::TypeArray) {
+      arm_goal_pose.clear(); // Clear the default values
+      for (int i = 0; i < arm_goal_param.size(); ++i) {
+        arm_goal_pose.push_back(static_cast<double>(arm_goal_param[i]));
+      }
+    } else {
+      ROS_WARN("Invalid arm_goal_pose parameter format, using default values.");
+    }
+  } else {
+    ROS_WARN("Failed to retrieve arm_goal_pose parameter, using default values.");
+  }
+ 
+  ROS_WARN("torso_goal_pose: %f", torso_goal_pose);
+  ROS_WARN("arm_goal_pose: [%f, %f, %f, %f]", arm_goal_pose[0], arm_goal_pose[1], arm_goal_pose[2], arm_goal_pose[3]);
+ 
   ros::Publisher   pub_hsr_arm_gp;
   ros::Publisher   pub_hsr_gripp_gp;
   ros::Publisher   pub_torso_curren_pose;
@@ -241,10 +270,17 @@ int main(int argc, char **argv)
   gripper_goal_pose.resize(1);
 
 
-  arm_goal_pose[0] = 0.0;
-  arm_goal_pose[1] = -1.5707;
-  arm_goal_pose[2] = -1.5707;
-  arm_goal_pose[3] = 0.0;
+  torso_goal_pose = torso_goal_pose;
+  arm_goal_pose[0] = arm_goal_pose[0];   // arm_flex
+  arm_goal_pose[1] = arm_goal_pose[1];   // arm_roll
+  arm_goal_pose[2] = arm_goal_pose[2];   // wrist_flex
+  arm_goal_pose[3] = arm_goal_pose[3];   // wrist_roll
+  //torso_goal_pose = 0.0; //arm_lift
+  //arm_goal_pose[0] = 0.0; //arm_flex
+  //arm_goal_pose[1] = -1.5707; //arm_roll
+  //arm_goal_pose[2] = -1.5707; //wrist_flex
+  //arm_goal_pose[3] = 0.0; //wrist_roll
+
 
 
   while(ros::ok())
@@ -254,6 +290,7 @@ int main(int argc, char **argv)
     traj_arm.points[0].positions[i+1] = arm_goal_pose[i];
 
     traj_gripp.points[0].positions[0] = gripper_goal_pose[0];
+    //traj_arm.points[0].positions[0] = torso_goal_pose; //arm_lift
     traj_arm.points[0].positions[0] = torso_goal_pose;
 
     // Set current pose for publish

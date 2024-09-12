@@ -3,6 +3,7 @@
 #include "nav_msgs/Path.h"
 #include "nav_msgs/GetPlan.h"
 #include "nav_msgs/GetMap.h"
+#include "std_srvs/Trigger.h"
 #include "PathPlanner.h"
 
 ros::ServiceClient cltGetStaticMap       ;
@@ -12,6 +13,15 @@ ros::ServiceClient cltGetAugmentedCostMap;
 float smooth_alpha   = 0.1;
 float smooth_beta    = 0.9;
 bool  diagonal_paths = false;
+
+bool path_plan_success = false;
+
+bool callback_path_plan_status(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp)
+{
+    resp.success = path_plan_success;
+    resp.message = path_plan_success ? "Path planning succeeded." : "Path planning failed.";
+    return true;
+}
 
 bool callback_a_star_with_static_map(nav_msgs::GetPlan::Request& req, nav_msgs::GetPlan::Response& resp)
 {
@@ -30,10 +40,15 @@ bool callback_a_star_with_static_map(nav_msgs::GetPlan::Request& req, nav_msgs::
     }
     bool success = PathPlanner::AStar(srvStaticMap.response.map, srvCostMap.response.map,
                                          req.start.pose, req.goal.pose, diagonal_paths, resp.plan);
-    if(success)
+    if(success){
         resp.plan = PathPlanner::SmoothPath(resp.plan, smooth_alpha, smooth_beta);
+    	path_plan_success = true;
+    }
     else
+    {
         std::cout << "PathPlanner.-> Cannot calculte path from start to goal positions using static map..." << std::endl;
+    	path_plan_success = false;
+    }
     return success;
 }
 
@@ -55,11 +70,18 @@ bool callback_a_star_with_augmented_map(nav_msgs::GetPlan::Request& req, nav_msg
     bool success = PathPlanner::AStar(srvStaticMap.response.map, srvCostMap.response.map,
                                          req.start.pose, req.goal.pose, diagonal_paths, resp.plan);
     if(success)
+    {
         resp.plan = PathPlanner::SmoothPath(resp.plan, smooth_alpha, smooth_beta);
+    	path_plan_success = true;
+    }
     else
+    {
         std::cout << "PathPlanner.-> Cannot calculte path from start to goal positions using augmented map..." << std::endl;
+    	path_plan_success = false;
+    }
     return success;
 }
+
 
 int main(int argc, char** argv)
 {
@@ -90,6 +112,7 @@ int main(int argc, char** argv)
     cltGetAugmentedMap     = n.serviceClient<nav_msgs::GetMap>("/map_augmenter/get_augmented_map"     );
     cltGetAugmentedCostMap = n.serviceClient<nav_msgs::GetMap>("/map_augmenter/get_augmented_cost_map");
 
+    ros::ServiceServer srvPathPlanStatus = n.advertiseService("/path_planner/path_plan_status", callback_path_plan_status);
     ros::ServiceServer srvGetPlanStatic   =n.advertiseService("/path_planner/plan_path_with_static"   , callback_a_star_with_static_map);
     ros::ServiceServer srvGetPlanAugmented=n.advertiseService("/path_planner/plan_path_with_augmented", callback_a_star_with_augmented_map);
 
