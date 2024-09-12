@@ -1,4 +1,6 @@
 #include "PathPlanner.h"
+#include <cmath>
+#include <cstdlib>
 
 bool PathPlanner::AStar(nav_msgs::OccupancyGrid& map, nav_msgs::OccupancyGrid& cost_map,
                       geometry_msgs::Pose& start_pose, geometry_msgs::Pose& goal_pose, bool diagonal_paths, nav_msgs::Path& result_path)
@@ -12,21 +14,55 @@ bool PathPlanner::AStar(nav_msgs::OccupancyGrid& map, nav_msgs::OccupancyGrid& c
     int idx_goal_y;
     idx_start_y = (int)((start_pose.position.y - map.info.origin.position.y)/map.info.resolution);
     idx_start_x = (int)((start_pose.position.x - map.info.origin.position.x)/map.info.resolution);
+    int idx_start = idx_start_y*map.info.width + idx_start_x;
+
+
+    //double distance = 0.1;
+    //double angle = 1.414213562;
     idx_goal_y  = (int)((goal_pose.position.y  - map.info.origin.position.y)/map.info.resolution);
     idx_goal_x  = (int)((goal_pose.position.x  - map.info.origin.position.x)/map.info.resolution);
-    int idx_start = idx_start_y*map.info.width + idx_start_x;
+    int _idx_goal_y = idx_goal_y;
+    int _idx_goal_x = idx_goal_x;
     int idx_goal  = idx_goal_y *map.info.width + idx_goal_x;
 
-    if(map.data[idx_goal] != 0)
+    int count = 0;
+    int loop_count = 0;
+    double radius = 0.1;
+    
+    int MAX_GOAL_UPDATE = 16; //points on circle
+    double angle_increment = 2 * M_PI / (MAX_GOAL_UPDATE - 1);
+    while (map.data[idx_goal] != 0 or loop_count < 4)
+    //if(map.data[idx_goal] != 0)
     {
-        std::cout << "PathPlanner.->Goal point is inside non-free space!!!!" << std::endl;
-        return false;
+
+        double angle = count * angle_increment;
+        //ROS_ERROR("PathPlanner.->Goal point is inside non-free space!!!!");
+        idx_goal_y  = _idx_goal_y + radius * cos(angle);
+        idx_goal_x  = _idx_goal_x + radius * sin(angle);
+        idx_goal  = idx_goal_y *map.info.width + idx_goal_x;
+	
+        count++;
+        if (count=MAX_GOAL_UPDATE)
+        {
+            count = 0;
+            radius += 0.1;
+            loop_count++;
+        }
     }
+
+    if (map.data[idx_goal] != 0)
+    {
+        ROS_ERROR("PathPlanner.->Goal point is inside non-free space!!!!");
+        return false;
+    } 
+
     if(map.data[idx_start] != 0)
     {
-        std::cout << "PathPlanner.->Start point is inside non-free space!!!!" << std::endl;
+        ROS_ERROR("PathPlanner.->Start point is inside non-free space!!!!");
         return false;
     }
+    
+    
 
     std::vector<Node> nodes;
     Node* current_node; 
@@ -117,6 +153,7 @@ bool PathPlanner::AStar(nav_msgs::OccupancyGrid& map, nav_msgs::OccupancyGrid& c
     std::cout << "PathCalculator.->Resulting path by A* has " << result_path.poses.size() << " points." << std::endl;
     return true;
 }
+
 
 nav_msgs::Path PathPlanner::SmoothPath(nav_msgs::Path& path, float weight_data, float weight_smooth, float tolerance)
 {

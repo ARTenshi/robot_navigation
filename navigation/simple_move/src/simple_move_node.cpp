@@ -256,9 +256,9 @@ int main(int argc, char** argv)
     ros::Subscriber sub_generalStop      = n.subscribe("/stop", 1, callback_general_stop);
     ros::Subscriber sub_navCtrlStop      = n.subscribe("/navigation/stop",  1, callback_navigation_stop);
     ros::Subscriber sub_navSimpleMvStop  = n.subscribe("/simple_move/stop", 1, callback_simple_move_stop);               
-    ros::Subscriber sub_gollisionRisk    = n.subscribe("/navigation/potential_fields/collision_risk", 10, callback_collision_risk);
+    ros::Subscriber sub_gollisionRisk    = n.subscribe("/navigation/obs_detector/collision_risk", 10, callback_collision_risk);
     ros::Subscriber sub_moveLateral      = n.subscribe("/simple_move/goal_dist_lateral" , 1, callback_move_lateral);
-    ros::Subscriber sub_rejection_force  = n.subscribe("/navigation/potential_fields/pf_rejection_force", 1, callback_rejection_force);
+    ros::Subscriber sub_rejection_force  = n.subscribe("/navigation/obs_detector/pf_rejection_force", 1, callback_rejection_force);
     tf::TransformListener tf_listener;
     ros::Rate loop(RATE);
 
@@ -268,9 +268,10 @@ int main(int argc, char** argv)
     float alpha = 0.6548;
     float beta = 0.2;
     float linear_acceleration = 0.1;
+    // TODO
     float fine_dist_tolerance = 0.03;
     float coarse_dist_tolerance = 0.2;
-    
+    // float angle_tolerance = 0.01;
     float angle_tolerance = 0.05;
     bool  move_head = true;
 

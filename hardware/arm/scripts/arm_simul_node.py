@@ -18,13 +18,13 @@ def callbackPos(msg):
             goalAngles[i] = msg.data[i]
     
 def main():
-    print "INITIALIZING ARM NODE IN SIMULATION BY [EDD-II]"
+    print ("INITIALIZING ARM NODE IN SIMULATION BY [EDD-II]")
     ###Connection with ROS
     rospy.init_node("head_simul_node")
     br = tf.TransformBroadcaster()
     jointStates = JointState()
     jointStates.name = ["arm_flex_joint", "arm_roll_joint", "wrist_flex_joint", "wrist_roll_joint"]
-    jointStates.position = [0, 0, 0, 0]
+    jointStates.position = [1.57, 1.57, 1.57, 1.57]
 
     subPosition = rospy.Subscriber("/hardware/arm/goal_pose", Float32MultiArray, callbackPos)
     pubArmPose = rospy.Publisher("/hardware/arm/current_pose", Float32MultiArray, queue_size = 1)
@@ -41,7 +41,7 @@ def main():
     global goalAngles;
     global goalGripper
     global speeds
-    goalAngles = [0, 0, 0, 0]
+    goalAngles = [1.57, 1.57, 1.57, 1.57]
     angles = [0, 0, 0, 0]
     speeds = [0.01, 0.01, 0.01, 0.01]
     goalGripper = 0

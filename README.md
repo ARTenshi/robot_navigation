@@ -1,5 +1,21 @@
-# robot_navigation
 
+# PUMAS Navigation for RoboCup2024 DSPL
+
+# How to usr this repository
+## SLAM
+docker compose -f slam-docker-compose.yml build
+docker compose -f slam-docker-compose.yml up
+
+## LOCALIZATION
+docker compose -f localization-docker-compose.yml build
+docker compose -f localization-docker-compose.yml up
+
+## MAP BUILDER
+following readme at hsr_hector pkg
+
+
+
+# robot navigation system introduction
 Service robots are intended to help humans in non-industrial environments such as houses or offices. To accomplish their goal, service robots must have several skills such as object recognition and manipulation, face detection and recognition, speech recognition and synthesis, task planning and, one of the most important, navigation in dynamic environments. This repository describes a fully implemented motion-planning system that comprehends from motion and path planning algorithms to spatial representation and behavior-based active navigation.
 
 This paper can be consulted online for free at this [link](https://bit.ly/40YEcZR). The following video shows this system working at RoboCup where we have won the **Smoothest, Safest Navigation Award** in 2022 and 2023.
