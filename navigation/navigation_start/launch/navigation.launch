@@ -20,7 +20,7 @@
   <param name="/navigation/map_name" value="$(arg map_name)"/>
   <!--for env objs to map-->
   <arg name="env_file_name" default="env_furniture_$(arg map_name).yaml"/>
-  <arg name="add_static_obstacles" default="true"/>
+  <arg name="add_static_obstacles" default="false"/>
   <!--map_augmenter & obs detect-->
   <arg name="memory_all_obstacles" default="False"/>
   <!--input topic-->
