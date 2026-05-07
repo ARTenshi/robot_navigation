@@ -1,89 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
 <launch>
+  <!--include file="$(find hma_pcl_reconst)/launch/pcl_reconst.launch"/-->
   <remap from="/get_distance_map" to="/get_cartographer_map"/>
   <remap from="/static_obstacle_map_ref" to="/get_cartographer_map"/>
-  
-  <remap from="/laser_2d_pose" to= "/global_pose"/>
+  <remap from="/laser_2d_pose" to="/global_pose"/>
   <remap from="/cmd_vel" to="/hsrb/command_velocity"/>
-  <remap from="/initialpose" to="/laser_2d_correct_pose"/>  
-  
+  <remap from="/initialpose" to="/laser_2d_correct_pose"/>
   <node name="killer_node" pkg="killer_node" type="killer_node.py" output="screen"/>
   <node name="fake_global_pose" pkg="killer_node" type="fake_global_pose.py" output="screen"/>
-  
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find navigation_start)/rviz/config.rviz"/>
-  
-  <arg name="prohibition_map_file"  default="$(find navigation_start)/maps/prohibition_maps/blank/map.yaml"/>
-  
+  <arg name="prohibition_map_file" default="$(find navigation_start)/maps/prohibition_maps/blank/map.yaml"/>
   <arg name="cmd_vel_name" default="/hsrb/command_velocity"/>
   <arg name="laser_scan_topic" default="/hsrb/base_scan"/>
   <arg name="point_cloud_topic" default="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
   <arg name="point_cloud_topic2" default="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
   <arg name="bumper_f_topic" default="hsrb/base_f_bumper_sensor"/>
-    
   <arg name="use_lidar" default="True"/>
   <arg name="use_sonars" default="False"/>
   <arg name="use_point_cloud" default="True"/>
   <arg name="use_point_cloud2" value="False"/>
   <arg name="use_bumper" default="False"/>
   <arg name="use_pot_fields" default="True"/>
-  
-  <arg name="cloud_downsampling" default="5"/>
-  <arg name="lidar_downsampling" default="1"/>
+  <arg name="cloud_downsampling" default="9"/>
+  <arg name="lidar_downsampling" default="2"/>
   <arg name="cloud_points_threshold" default="100"/>
   <arg name="lidar_points_threshold" default="20"/>
-  
-  <arg name="min_x" default="0.27"/>
-  <arg name="max_x" default="0.50"/>
-  <arg name="min_y" default="-0.25"/>
-  <arg name="max_y" default="0.25"/>
-  <arg name="min_z" default="0.01"/>
-  <arg name="max_z" default="1.00"/>
-   
+  <!--障害物を検出する範囲を指定するパラメータ-->
+  <!--depth-->
+  <arg name="min_x" default="0.17"/>
+  <arg name="max_x" default="0.7"/>
+  <!--width, min_y is rightside-->
+  <arg name="min_y" default="-0.30"/>
+  <arg name="max_y" default="0.30"/>
+  <!--height-->
+  <arg name="min_z" default="0.05"/>
+  <arg name="max_z" default="1.5"/>
+  <!--arg name="max_z" default="1.5"/-->
+  <!--backward behavior-->
+  <arg name="forcing_backward" default="True"/>
+  <arg name="backward_distance" default="-0.25"/>
+  <arg name="disable_backward_threshold" default="3.0"/>
+  <arg name="memory_all_obstacles" default="True"/>
+  <!--set same param max_x-->
+  <arg name="pot_fields_d0" default="0.35"/>
+  <arg name="pot_fields_k_rej" default="0.8"/>
+  <!--arg name="pot_fields_d0" default="0.35"/>
+  <arg name="pot_fields_k_rej" default="2.0"/-->
   <group ns="hardware">
     <node name="head" pkg="head" type="head_node" output="screen"/>
     <node name="led" pkg="head" type="led_node" output="screen"/>
-    <node name="arm" pkg="arm" type="arm_node" output="screen"/>
+    <!--node name="arm" pkg="arm" type="arm_node" output="screen"/-->
+    <node name="arm" pkg="arm" type="arm_node" output="screen">
+      <rosparam param="torso_goal_pose">0.26</rosparam>
+      <!--arm_lift, meter-->
+      <!--[arm_flex, arm_roll, wrist_flex, wrist_roll], radian-->
+      <!--rosparam param="arm_goal_pose">[-0.45, 2.54, -1.57, -0.0]</rosparam-->
+      <rosparam param="arm_goal_pose">[-0.26, -1.57, -1.57, -0.0]</rosparam>
+    </node>
   </group>
-  
   <node name="map_server_bypass" pkg="map_server_bypass" type="map_server_bypass_node" output="screen">
-    <param name="occupied_threshold" value="70"/>
+    <!--param name="occupied_threshold" value="70"/-->
+    <param name="occupied_threshold" value="80"/>
   </node>
-  
-  <node name="path_planner" pkg="path_planner" type="path_planner_node" output="screen">
-    <param name="diagonal_paths" value="False"/>
+  <node name="path_planner" pkg="path_planner" type="path_planner_node" output="screen" respawn="true">
+    <param name="diagonal_paths" value="True"/>
   </node>
-  
-  <node name="simple_move"  pkg="simple_move"  type="simple_move_node"  output="screen">
-    <param name="max_linear_speed" value="0.8"/>
-    <param name="max_angular_speed" value="1.25"/>
-    <param name="control_alpha" value="0.2"/>
-    <param name="control_beta" value="0.8"/>
+  <node name="simple_move" pkg="simple_move" type="simple_move_node" output="screen">
+    <!--param name="max_linear_speed" value="0.8"/-->
+    <!--param name="max_linear_speed" value="0.8"/-->
+    <!--param name="max_angular_speed" value="1.5"/-->
+    <param name="max_linear_speed" value="0.6"/>
+    <param name="max_angular_speed" value="0.8"/>
+    <param name="control_alpha" value="0.4"/>
+    <param name="control_beta" value="0.15"/>
     <param name="use_pot_fields" value="$(arg use_pot_fields)"/>
     <param name="cmd_vel_name" value="$(arg cmd_vel_name)"/>
   </node>
-  
-  <node name="potential_fields"  pkg="potential_fields"  type="pot_fields_node"  output="screen">
+  <node name="obs_detector" pkg="obstacle_detector" type="obs_detect_node" output="screen" respawn="true">
     <param name="laser_scan_topic" value="$(arg laser_scan_topic)"/>
     <param name="point_cloud_topic" value="$(arg point_cloud_topic)"/>
     <param name="point_cloud_topic2" value="$(arg point_cloud_topic2)"/>
     <param name="bumper_f_topic" value="$(arg bumper_f_topic)"/>
-    
     <param name="use_lidar" value="$(arg use_lidar)"/>
     <param name="use_sonars" value="$(arg use_sonars)"/>
     <param name="use_point_cloud" value="$(arg use_point_cloud)"/>
     <param name="use_point_cloud2" value="$(arg point_cloud_topic2)"/>
     <param name="use_bumper" value="$(arg use_bumper)"/>
     <param name="use_pot_fields" value="$(arg use_pot_fields)"/>
-    
     <param name="cloud_downsampling" value="$(arg cloud_downsampling)"/>
     <param name="cloud_points_threshold" value="$(arg cloud_points_threshold)"/>
     <param name="lidar_points_threshold" value="$(arg lidar_points_threshold)"/>
-    
     <param name="debug" value="False"/>
-    
-    <param name="pot_fields_d0" value="0.40"/>
-    <param name="pot_fields_k_rej" value="5.7"/>
-    
+    <!--param name="pot_fields_d0" value="0.35"/-->
+    <!--param name="pot_fields_k_rej" value="2.0"/-->
+    <param name="pot_fields_d0" value="$(arg pot_fields_d0)"/>
+    <param name="pot_fields_k_rej" value="$(arg pot_fields_k_rej)"/>
+    <!--param name="pot_fields_k_rej" value="0.4"/-->
     <param name="max_x" value="$(arg max_x)"/>
     <param name="min_x" value="$(arg min_x)"/>
     <param name="max_y" value="$(arg max_y)"/>
@@ -91,44 +103,47 @@
     <param name="max_z" value="$(arg max_z)"/>
     <param name="min_z" value="$(arg min_z)"/>
   </node>
-  
-  <arg name="topic_name" default="/navigation/potential_fields/enable" />
-  <node pkg="rostopic" type="rostopic" name="rostopic_pub_node" output="screen" args="pub $(arg topic_name) std_msgs/Bool 'data: true'" />
-  
-  <node name="map_augmenter"  pkg="map_augmenter"  type="map_augmenter_node"  output="screen">
+  <!--TODO decay_factor >> delete dynamic obstacle to move 10s-->
+  <node name="map_augmenter" pkg="map_augmenter" type="map_augmenter_node" output="screen">
     <param name="laser_scan_topic" value="$(arg laser_scan_topic)"/>
     <param name="point_cloud_topic" value="$(arg point_cloud_topic)"/>
     <param name="point_cloud_topic2" value="$(arg point_cloud_topic2)"/>
-    
     <param name="use_lidar" value="$(arg use_lidar)"/>
     <param name="use_sonars" value="$(arg use_sonars)"/>
     <param name="use_point_cloud" value="$(arg use_point_cloud)"/>
     <param name="use_point_cloud2" value="$(arg use_point_cloud2)"/>
-    
     <param name="use_online" value="True"/>
-    
+    <param name="decay_factor" value="10"/>
+    <param name="memory_all_obstacles" value="$(arg memory_all_obstacles)"/>
     <param name="cloud_downsampling" value="$(arg cloud_downsampling)"/>
-    
-    <param name="inflation_radius" value="0.22"/>
-    <param name="cost_radius" value="0.1"/>
-    
+    <!--param name="inflation_radius" value="0.2"/-->
+    <!--param name="cost_radius" value="0.28"/-->
+    <param name="inflation_radius" value="0.15"/>
+    <param name="cost_radius" value="0.22"/>
     <param name="max_x" value="$(arg max_x)"/>
     <param name="min_x" value="$(arg min_x)"/>
     <param name="max_y" value="$(arg max_y)"/>
     <param name="min_y" value="$(arg min_y)"/>
     <param name="max_z" value="$(arg max_z)"/>
     <param name="min_z" value="$(arg min_z)"/>
-
   </node>
-  
+  <arg name="topic_name" default="/navigation/obs_detector/enable"/>
+  <node pkg="rostopic" type="rostopic" name="rostopic_pub_node" output="screen" args="pub $(arg topic_name) std_msgs/Bool 'data: true'"/>
   <node name="prohibition_map_server" pkg="map_server" type="map_server" output="screen" args="$(arg prohibition_map_file)">
     <remap from="/static_map" to="/prohibition_map"/>
     <remap from="/map" to="/prohibition_layer_map"/>
   </node>
-  
-  <node name="mvn_pln"  pkg="mvn_pln"  type="mvn_pln_node"  output="screen">
+  <node name="mvn_pln" pkg="mvn_pln" type="mvn_pln_node" output="screen">
     <remap from="/nav_control/goal" to="/move_base_simple/goal"/>
     <param name="patience" value="True"/>
+    <param name="proximity_criterion" value="1.5"/>
+    <param name="forcing_backward" value="$(arg forcing_backward)"/>
+    <param name="backward_distance" value="$(arg backward_distance)"/>
+    <param name="disable_backward_threshold" value="$(arg disable_backward_threshold)"/>
+    <param name="memory_all_obstacles" value="$(arg memory_all_obstacles)"/>
   </node>
-  
+  <!--call twice-->
+  <node pkg="rostopic" type="rostopic" name="rostopic_pub_node2" output="screen" args="pub $(arg topic_name) std_msgs/Bool 'data: true'"/>
+  <!--head pose tmp cancel dynamically, using for motion_synth-->
+  <!--node name="tmp_head_pose_cancel_node"  pkg="navigation_tools"  type="tmp_head_pose_canceller.py" output="screen" respawn="true"/-->
 </launch>

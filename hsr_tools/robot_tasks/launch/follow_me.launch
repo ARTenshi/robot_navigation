@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+
+  <group ns="hri">
+      <node name="leg_finder" pkg="leg_finder" type="leg_finder_node" output="screen">
+        <param name="scan_downsampling" value="1"/>
+        <param name="laser_scan_frame" value="base_range_sensor_link"/>
+        <param name="laser_scan_topic" value="/hsrb/base_scan"/>
+        <param name="show_hypothesis" value="False"/>
+      </node>
+
+      <node name="human_follower" pkg="human_follower" type="human_follower_node" output="screen" args="--move_head">
+        <param name="control_alpha" value="0.6548"/>
+        <param name="control_beta" value="0.3"/>
+        <param name="max_linear" value="0.7"/>
+        <param name="max_angular" value="0.7"/>
+        <param name="dist_to_human" value="0.8"/>
+        <param name="move_backwards" value="False"/>
+        <param name="move_head" value="True"/>
+        <param name="pot_fields" value="True"/>
+        <param name="legs_pose_topic" value="/hri/leg_finder/leg_pose"/>
+        <param name="cmd_vel_topic" value="/hsrb/command_velocity"/>
+        <param name="head_topic" value="/hardware/head/goal_pose"/>
+      </node>
+  </group>
+
+  <node name="followme" pkg="robot_tasks" type="followme.py" output="screen"/>
+</launch>

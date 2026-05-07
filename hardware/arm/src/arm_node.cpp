@@ -16,7 +16,6 @@
 
 
 float torso_goal_pose;
-
 std::vector<float>  arm_goal_pose;
 std::vector<float>  arm_complete_cp;
 std::vector<float>  gripper_goal_pose;
@@ -32,7 +31,6 @@ bool nav_request_received     = true;
 tmc_control_msgs::GripperApplyEffortGoal goal;
 //tmc_suction::SuctionControlGoal goal_suction;
 
-
 /*void armSuctionCallback(const std_msgs::Bool::ConstPtr& msg)
 {
   goal_suction.suction_on.data = msg->data;
@@ -44,8 +42,6 @@ tmc_control_msgs::GripperApplyEffortGoal goal;
 
   msg_suction_recived = true;
 }*/
-
-
 
 void armGoalPoseCallback(const std_msgs::Float32MultiArray::ConstPtr& msg)
 {
@@ -81,7 +77,6 @@ void gripperTorqueCallback(const std_msgs::Float32::ConstPtr& msg)
   msg_gripp_torq_recived = true;
 }
 
-
 void torsoGoalPoseCallback(const std_msgs::Float32::ConstPtr& msg)
 {
   torso_goal_pose = msg->data;
@@ -113,7 +108,7 @@ int main(int argc, char **argv)
 {
   std::cout << std::endl << "------------------------->" << std::endl;
   std::cout << "INITIALIZING ARM_BRIDGE_NODE BY [EDD-II] " << std::endl;
-  ros::init(argc, argv, "arm_bridge");
+  ros::init(argc, argv, "arm");
 
   std_msgs::Float32 msg_torso_current_pose;
   std_msgs::Float32MultiArray msg_arm_current_pose;
@@ -121,7 +116,37 @@ int main(int argc, char **argv)
   std_msgs::Bool msg_torso_goal_pose;
 
   // initalize ROS publisher
-  ros::NodeHandle  n;
+  ros::NodeHandle  n("~");
+  ros::NodeHandle  pn("~");
+
+  //defaults
+  //float torso_goal_pose;
+  //std::vector<float> arm_goal_pose;
+
+  torso_goal_pose = 0.0;
+  arm_goal_pose = {0.0, -1.5707, -1.5707, 0.0};
+
+  //Load arm_lift pose
+  pn.getParam("torso_goal_pose", torso_goal_pose);
+
+  // Load arm_pose from ROS parameter server using XmlRpcValue
+  XmlRpc::XmlRpcValue arm_goal_param;
+  if (pn.getParam("arm_goal_pose", arm_goal_param)) {
+    if (arm_goal_param.getType() == XmlRpc::XmlRpcValue::TypeArray) {
+      arm_goal_pose.clear(); //clear arm_goal_pose
+      for (int i = 0; i < arm_goal_param.size(); ++i) {
+        arm_goal_pose.push_back(static_cast<double>(arm_goal_param[i]));
+      }
+    } else {
+      ROS_WARN("Invalid arm_goal_pose parameter format, using default values.");
+    }
+  } else {
+    ROS_WARN("Failed to retrieve arm_goal_pose parameter, using default values.");
+  }
+ 
+  ROS_WARN("torso_goal_pose: %f", torso_goal_pose);
+  ROS_WARN("arm_goal_pose: [%f, %f, %f, %f]", arm_goal_pose[0], arm_goal_pose[1], arm_goal_pose[2], arm_goal_pose[3]);
+ 
   ros::Publisher   pub_hsr_arm_gp;
   ros::Publisher   pub_hsr_gripp_gp;
   ros::Publisher   pub_torso_curren_pose;
@@ -136,8 +161,6 @@ int main(int argc, char **argv)
   ros::Subscriber  sub_torso_goal_pose;
   ros::Subscriber  sub_hsr_arm_cp;
   ros::Subscriber  sub_start_nav;
-
-
 
   actionlib::SimpleActionClient<tmc_control_msgs::GripperApplyEffortAction>
     gripperActionClient("/hsrb/gripper_controller/grasp", true);
@@ -155,7 +178,6 @@ int main(int argc, char **argv)
   pub_arm_goal_pose   = n.advertise<std_msgs::Bool>("/hardware/arm/armGoalPose", 10);
   pub_torso_goal_pose = n.advertise<std_msgs::Bool>("/hardware/torso/goal_reached", 10);
 
-
   sub_pumas_arm_gp        = n.subscribe("/hardware/arm/goal_pose", 10, armGoalPoseCallback);
   sub_pumas_gripp_gp      = n.subscribe("/hardware/arm/goal_gripper", 10, gripperPoseCallback);
   sub_pumas_torque_gripp  = n.subscribe("/hardware/arm/torque_gripper", 10, gripperTorqueCallback);
@@ -168,12 +190,10 @@ int main(int argc, char **argv)
   gripperActionClient.waitForServer();
   //suctionActionClient.waitForServer();
 
-
   // wait to establish connection between the controller
   while (pub_hsr_arm_gp.getNumSubscribers() == 0) {
     ros::Duration(0.1).sleep();
   }
-
 
   // make sure the controller is running
   ros::ServiceClient client = n.serviceClient<controller_manager_msgs::ListControllers>(
@@ -215,22 +235,21 @@ int main(int argc, char **argv)
   //msg_torso_current_pose.data.resize(1);
   msg_arm_current_pose.data.resize(4);
 
-
   // Initial values
-  traj_arm.points[0].velocities[0] = 0.0;
-  traj_arm.points[0].velocities[1] = 0.0;
-  traj_arm.points[0].velocities[2] = 0.1;
-  traj_arm.points[0].velocities[3] = 0.1;
-  traj_arm.points[0].velocities[4] = 0.1;
-  traj_gripp.points[0].velocities[0] = -0.5;
+  //traj_arm.points[0].velocities[0] = 0.0;
+  //traj_arm.points[0].velocities[1] = 0.0;
+  //traj_arm.points[0].velocities[2] = 0.1;
+  //traj_arm.points[0].velocities[3] = 0.1;
+  //traj_arm.points[0].velocities[4] = 0.1;
+  //traj_gripp.points[0].velocities[0] = -0.5;
 
   traj_arm.points[0].positions[0] = 0.0;
   traj_arm.points[0].positions[1] = 0.0;
   traj_arm.points[0].positions[2] = -1.5707;
   traj_arm.points[0].positions[3] = -1.5707;
   traj_arm.points[0].positions[4] = 0.0;
-  traj_gripp.points[0].positions[0] = -0.4;
 
+  traj_gripp.points[0].positions[0] = -0.4;
   traj_gripp.points[0].effort[0] = -0.2;
 
   traj_arm.points[0].time_from_start = ros::Duration(3.0);
@@ -240,12 +259,11 @@ int main(int argc, char **argv)
   arm_complete_cp.resize(5);
   gripper_goal_pose.resize(1);
 
-
-  arm_goal_pose[0] = 0.0;
-  arm_goal_pose[1] = -1.5707;
-  arm_goal_pose[2] = -1.5707;
-  arm_goal_pose[3] = 0.0;
-
+  torso_goal_pose = torso_goal_pose;     // arm_lift
+  arm_goal_pose[0] = arm_goal_pose[0];   // arm_flex
+  arm_goal_pose[1] = arm_goal_pose[1];   // arm_roll
+  arm_goal_pose[2] = arm_goal_pose[2];   // wrist_flex
+  arm_goal_pose[3] = arm_goal_pose[3];   // wrist_roll
 
   while(ros::ok())
   {
@@ -262,7 +280,6 @@ int main(int argc, char **argv)
     msg_arm_current_pose.data[1] = arm_complete_cp[2];
     msg_arm_current_pose.data[2] = arm_complete_cp[3];
     msg_arm_current_pose.data[3] = arm_complete_cp[4];
-
 
     // publish ROS message
     if(msg_arm_recived)
@@ -313,8 +330,8 @@ int main(int argc, char **argv)
     if(wait_for_arm_goal_pose){
       float arm_d=0;
       for(size_t i=0; i < msg_arm_current_pose.data.size(); i++)
-        arm_d=arm_d+pow(traj_arm.points[0].positions[i+1] - msg_arm_current_pose.data[i],2);
-      arm_d=pow(arm_d,0.5);
+        arm_d = arm_d + pow(traj_arm.points[0].positions[i+1] - msg_arm_current_pose.data[i],2);
+      arm_d = pow(arm_d,0.5);
       if(arm_d < 0.01){
         std::cout << "Wait for arm goal pose: true" << std::endl;
         msg_arm_goal_pose.data=true;

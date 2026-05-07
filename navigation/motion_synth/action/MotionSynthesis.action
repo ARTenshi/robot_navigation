@@ -1,0 +1,11 @@
+geometry_msgs/Pose2D goal_location
+bool apply_start_pose
+motion_synth/Joints start_pose
+bool apply_goal_pose
+motion_synth/Joints goal_pose
+string[] exec_from_first
+geometry_msgs/Point goal_tolerance
+---
+bool result
+---
+float32 feedback
