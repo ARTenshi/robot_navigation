@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package>
+  <name>navigation_tools</name>
+  <version>0.0.0</version>
+  <description>The navigation_tools package</description>
+
+  <maintainer email="todo@todo.todo">todo</maintainer>
+
+  <license>TODO</license>
+  <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>rospy</build_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>rospy</run_depend>
+
+  <export>
+  </export>
+</package>

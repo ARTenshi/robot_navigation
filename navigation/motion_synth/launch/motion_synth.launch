@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="motion_synth" type="motion_synthesis_server.py" name="motion_synth" output="screen" respawn="true"/>
+</launch>

@@ -1,0 +1,8 @@
+std_msgs/Header header
+float32 arm_lift_joint
+float32 arm_flex_joint
+float32 arm_roll_joint
+float32 wrist_flex_joint
+float32 wrist_roll_joint
+float32 head_pan_joint
+float32 head_tilt_joint

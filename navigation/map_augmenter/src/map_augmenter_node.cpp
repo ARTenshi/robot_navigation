@@ -20,12 +20,14 @@ int   cloud_downsampling  = 9;;
 int   cloud_downsampling2 = 9;;
 int   lidar_downsampling  = 2;
 bool  are_there_obstacles = false;
+int decay_factor = 10;
 
 bool use_lidar  = true;
 bool use_sonars = false;
 bool use_cloud  = false;
 bool use_cloud2 = false;
 bool use_online = false;
+
 
 tf::TransformListener* listener;
 std::string base_link_name      = "/base_footprint";
@@ -42,6 +44,33 @@ nav_msgs::OccupancyGrid static_cost_map;        //Cost map calculated using infl
 nav_msgs::OccupancyGrid obstacles_map;          //Only obstacles map calculated with all enabled sensors, without inflation. Calculated on service request.
 nav_msgs::OccupancyGrid obstacles_inflated_map; //Only obstacles with inflation.
 nav_msgs::OccupancyGrid augmented_map;          //Static map plus prohibition layer plus obstacles map plus inflation. Calculated on service request.
+                                                //
+
+//add by r.k memory all obst
+bool memory_all_obstacles = false;
+nav_msgs::OccupancyGrid memory_map;
+std::set<int> memory_cells;
+
+void add_memory_obstacle(const Eigen::Vector3d& point)
+{
+    int x = int((point.x() - static_map.info.origin.position.x) / static_map.info.resolution);
+    int y = int((point.y() - static_map.info.origin.position.y) / static_map.info.resolution);
+    int idx = y * static_map.info.width + x;
+
+    if (x < 0 || y < 0 || x >= (int)static_map.info.width || y >= (int)static_map.info.height)
+        return;
+
+    memory_cells.insert(idx);
+}
+
+bool callback_clear_memory_all_obstacles(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp)
+{
+    memory_cells.clear();
+    resp.success = true;
+    resp.message = "Memory obstacles have been cleared.";
+    std::cout << "MapAugmenter.->Memory All Obstacles cleared." << std::endl;
+    return true;
+}
 
 Eigen::Affine3d get_robot_position()
 {
@@ -89,6 +118,36 @@ Eigen::Affine3d get_lidar_position()
     return e;
 }
 
+//modified by r.kobayashi for avoiding map size diferent warn
+//nav_msgs::OccupancyGrid merge_maps(nav_msgs::OccupancyGrid& a, nav_msgs::OccupancyGrid& b)
+//{
+//    if (fabs (a.info.resolution - b.info.resolution > 1e-6))
+//    {
+//        ROS_ERROR("MapAugmenter.->Cannot merge maps: resolution failed");
+//        return a;
+//    }
+//
+//    nav_msgs::OccupancyGrid c = a;
+//    const double res = a.info.resolution;
+//
+//    for(uint32_t by = 0; by < b.info.height; ++by){
+//        for (uint32_t bx = 0; bx < b.info.width; ++bx){
+//            const int8_t v = b.data[by * b.info.width + bx];
+//            if (v <= 0) continue;
+//
+//            const double world_x = b.info.origin.position.x + (bx + 0.5) * res;
+//            const double world_y = b.info.origin.position.y + (by + 0.5) * res;
+//            const int ax = int((world_x - a.info.origin.position.x) / res);
+//            const int ay = int((world_y - a.info.origin.position.y) / res);
+//
+//            if (ax < 0 || ay < 0 || ax >= (int)a.info.width || ay >= (int)a.info.height) continue;
+//            const int ai = ay * a.info.width + ax;
+//            c.data[ai] = std::max(c.data[ai], v);
+//        }
+//    }
+//    return c;
+//}
+
 nav_msgs::OccupancyGrid merge_maps(nav_msgs::OccupancyGrid& a, nav_msgs::OccupancyGrid& b)
 {
     if(a.info.width != b.info.width || a.info.height != b.info.height)
@@ -124,6 +183,7 @@ nav_msgs::OccupancyGrid inflate_map(nav_msgs::OccupancyGrid& map, float inflatio
     return newMap;
 }
 
+//NearnessToObstacle
 nav_msgs::OccupancyGrid get_cost_map(nav_msgs::OccupancyGrid& map, float cost_radius)
 {
     if(cost_radius < 0)
@@ -161,6 +221,7 @@ bool obstacles_map_with_cloud()
 {
     std::cout << "MapAugmenter.->Trying to get point cloud from topic: " << point_cloud_topic << std::endl;
     boost::shared_ptr<sensor_msgs::PointCloud2 const> ptr = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(point_cloud_topic, ros::Duration(1.0));
+    //boost::shared_ptr<sensor_msgs::PointCloud2 const> ptr = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(point_cloud_topic, ros::Duration(10.0));
     if(ptr == NULL)
     {
         std::cout << "MapAugmenter.->Cannot get point cloud!!!" << std::endl;
@@ -181,6 +242,11 @@ bool obstacles_map_with_cloud()
         if(v.x() > minX && v.x() < maxX && v.y() > minY && v.y() < maxY && v.z() > minZ && v.z() < maxZ)
         {
             v = robot_to_map * v;
+
+            if (memory_all_obstacles){
+                add_memory_obstacle(v);
+            }
+
             cell_x = (int)((v.x() - obstacles_map.info.origin.position.x)/obstacles_map.info.resolution);
             cell_y = (int)((v.y() - obstacles_map.info.origin.position.y)/obstacles_map.info.resolution);
             cell   = cell_y * obstacles_map.info.width + cell_x;
@@ -195,6 +261,7 @@ bool obstacles_map_with_cloud()
 bool obstacles_map_with_cloud2()
 {
     std::cout << "MapAugmenter.->Trying to get point cloud2 from topic: " << point_cloud_topic2 << std::endl;
+    //boost::shared_ptr<sensor_msgs::PointCloud2 const> ptr=ros::topic::waitForMessage<sensor_msgs::PointCloud2>(point_cloud_topic2, ros::Duration(10.0));
     boost::shared_ptr<sensor_msgs::PointCloud2 const> ptr=ros::topic::waitForMessage<sensor_msgs::PointCloud2>(point_cloud_topic2, ros::Duration(1.0));
     if(ptr == NULL)
     {
@@ -216,6 +283,11 @@ bool obstacles_map_with_cloud2()
         if(v.x() > minX && v.x() < maxX && v.y() > minY && v.y() < maxY && v.z() > minZ && v.z() < maxZ)
         {
             v = robot_to_map * v;
+
+            if (memory_all_obstacles){
+                add_memory_obstacle(v);
+            }
+
             cell_x = (int)((v.x() - obstacles_map.info.origin.position.x)/obstacles_map.info.resolution);
             cell_y = (int)((v.y() - obstacles_map.info.origin.position.y)/obstacles_map.info.resolution);
             cell   = cell_y * obstacles_map.info.width + cell_x;
@@ -231,6 +303,7 @@ bool obstacles_map_with_lidar()
 {
     std::cout << "MapAugmenter.->Trying to get laser scan from topic: " << laser_scan_topic << std::endl;
     boost::shared_ptr<sensor_msgs::LaserScan const> ptr = ros::topic::waitForMessage<sensor_msgs::LaserScan>(laser_scan_topic, ros::Duration(1.0));
+    //boost::shared_ptr<sensor_msgs::LaserScan const> ptr = ros::topic::waitForMessage<sensor_msgs::LaserScan>(laser_scan_topic, ros::Duration(10.0));
     if(ptr == NULL)
     {
         std::cout << "MapAugmenter.->Cannot get laser scan!!!" << std::endl;
@@ -250,7 +323,14 @@ bool obstacles_map_with_lidar()
         v = lidar_to_robot * v;
         if(v.x() > minX && v.x() < maxX && v.y() > minY && v.y() < maxY && v.z() > minZ && v.z() < maxZ) 
         {
+
+
             v = robot_to_map * v;
+
+            if (memory_all_obstacles){
+                add_memory_obstacle(v);
+            }
+            
             cell_x = (int)((v.x() - obstacles_map.info.origin.position.x)/obstacles_map.info.resolution);
             cell_y = (int)((v.y() - obstacles_map.info.origin.position.y)/obstacles_map.info.resolution);
             cell   = cell_y * obstacles_map.info.width + cell_x;
@@ -306,6 +386,13 @@ bool obstacles_map_with_sonars()
         obstacles_map.data[cell] = 100;
         are_there_obstacles = true;
     }
+    
+    if (memory_all_obstacles){
+        add_memory_obstacle(v0);
+        add_memory_obstacle(v1);
+        add_memory_obstacle(v2);
+    }
+
     return true;
 }
 
@@ -344,8 +431,19 @@ bool callback_augmented_map(nav_msgs::GetMap::Request& req, nav_msgs::GetMap::Re
         static_cost_map = get_cost_map(static_map, cost_radius);
         obstacles_map = static_map;
         for(size_t i=0; i < obstacles_map.data.size(); i++) obstacles_map.data[i] = 0;
+
+
         std::cout << "MapAugmenter.->Statics maps have been updated." << std::endl;
     } 
+
+    if (memory_all_obstacles)
+    {
+        std::cout << "MapAugmenter.->User Request Memory All Obstacles" << std::endl;
+        for (int idx : memory_cells){
+            if (idx >= 0 && idx < (int)obstacles_map.data.size())
+                obstacles_map.data[idx] = 100;
+        }
+    }
  
     if(use_lidar  && !obstacles_map_with_lidar())
         return false;
@@ -444,7 +542,6 @@ int main(int argc, char** argv)
     listener = new tf::TransformListener();
     ros::Rate loop(10);
 
-    int decay_factor = 10;
     if(ros::param::has("~use_lidar"))
         ros::param::get("~use_lidar", use_lidar);
     if(ros::param::has("~use_sonars"))
@@ -489,6 +586,14 @@ int main(int argc, char** argv)
         ros::param::get("~lidar_downsampling", lidar_downsampling);
     if(ros::param::has("/base_link_name"))
         ros::param::get("/base_link_name", base_link_name);
+    if(ros::param::has("~memory_all_obstacles"))
+        ros::param::get("~memory_all_obstacles", memory_all_obstacles);
+
+    //TODO memory_all_obstacles
+    if(memory_all_obstacles)
+    {
+        decay_factor = 0;
+    }
 
     std::cout << "MapAugmenter.->Parameters: min_x =" << minX << "  max_x =" << maxX << "  min_y =" << minY << "  max_y =" << maxY;
     std::cout << "  min_z =" << minZ << "  max_z =" << maxZ << std::endl;
@@ -561,6 +666,9 @@ int main(int argc, char** argv)
     ros::ServiceServer srvAugmentedCostMap  = n.advertiseService("/map_augmenter/get_augmented_cost_map", callback_augmented_cost_map);
     ros::ServiceServer srvAreThereObstacles = n.advertiseService("/map_augmenter/are_there_obstacles"   , callback_are_there_obstacles);
     ros::ServiceServer srvIsInsideObstacles = n.advertiseService("/map_augmenter/is_inside_obstacles"   , callback_is_inside_obstacles);
+
+    ros::ServiceServer srvClearMemoryObstacles = n.advertiseService("/map_augmenter/clear_memory_all_obstacles", callback_clear_memory_all_obstacles);
+
     
     int counter = 0;
     while(ros::ok())
@@ -568,7 +676,26 @@ int main(int argc, char** argv)
         if(++counter > 10)
         {
             counter = 0;
-            are_there_obstacles = decay_map_and_check_if_obstacles(obstacles_map, decay_factor);
+
+            //add by r.kobayashi 2025/6/23 memory all obstacles
+            if (memory_all_obstacles)
+            {
+                obstacles_map = static_map;
+                std::fill(obstacles_map.data.begin(), obstacles_map.data.end(), 0); //zero clear
+                                                                                    
+                for (int idx : memory_cells) //add memory obstacles
+                {
+                    if (idx >= 0 && idx < (int)obstacles_map.data.size())
+                    {
+                        obstacles_map.data[idx] = 100;
+                    }
+                }
+            }
+            else
+            {
+                are_there_obstacles = decay_map_and_check_if_obstacles(obstacles_map, decay_factor); //default implementation
+            }
+
             obstacles_inflated_map = inflate_map(obstacles_map, inflation_radius);
             augmented_map = merge_maps(static_map, obstacles_inflated_map);
             pubAugmentedMap.publish(augmented_map);
