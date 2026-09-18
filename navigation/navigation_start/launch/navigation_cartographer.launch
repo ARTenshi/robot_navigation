@@ -19,8 +19,8 @@
   
   <arg name="cmd_vel_name" default="/hsrb/command_velocity"/>
   <arg name="laser_scan_topic" default="/hsrb/base_scan"/>
-  <!--arg name="point_cloud_topic" default="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/-->
-  <arg name="point_cloud_topic" default="/hma_pcl_reconst/depth_registered/points"/>
+  <arg name="point_cloud_topic" default="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
+  <!--arg name="point_cloud_topic" default="/hma_pcl_reconst/depth_registered/points"/-->
   <arg name="point_cloud_topic2" default="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/>
   <arg name="bumper_f_topic" default="hsrb/base_f_bumper_sensor"/>
     
