@@ -4,7 +4,10 @@ Service robots are intended to help humans in non-industrial environments such a
 
 This paper can be consulted online for free at this [link](https://bit.ly/40YEcZR). The following video shows this system working at RoboCup where we have won the **Smoothest, Safest Navigation Award** in 2022 ~ 2025.
 
+
 [![Watch the video](https://img.youtube.com/vi/s2g95Y9Me3c/hqdefault.jpg)](https://www.youtube.com/embed/s2g95Y9Me3c)
+
+Also we have ROS2 humble/jazzy version [here](https://github.com/artenshi/pumas_nav2).
 
 Please, if you use this material, don't forget to add the following reference:
 
@@ -20,8 +23,16 @@ year		= {2018}
 }
 ```
 
-In RoboCup2024 and RoboCup2025 
+In RoboCup2024 and RoboCup2025 development result do you want to use (ryohei/devel/rc25 branch)
 Also please cite this:
+```
+@article{kobayashi:2025,
+author 		= {Ryohei Kobayashi and Kosei Isomoto and Kosei Yamao and Soma Fumoto and Koshun Arimura and Naoki Yamaguchi and Akinobu Mizutani and Tomoya Shiba and Kouki Kimizuka and Yuta Ohno and Ryo Terashima and Hiromasa Yamaguchi and Tomoaki Fujino and Ryoga Maruno and Wataru Yoshimura and Kazuhito Mine and Tang Phu Thien Nhan and Yuga Yano and Yuichiro Tanaka and Takeshi Nishida and Takashi Morie and Hakaru Tamukoh},
+title 		= {{Hibikino-Musashi@Home 2025 Team Description Paper}},
+journal		= {{arXiv preprint arXiv:2511.20180}},
+year		= {2025}
+}
+```
 
 # Setup
 
@@ -171,9 +182,12 @@ year		= {2012}
 You can download it at the following [link](https://web.siia.unam.mx/siia-publico/v/include/modulo_productos/tesis.php?id=858286) (click on *URL: Ver Tesis*).
 
 # Safty Notice and Disclaimer
-Before using this software, especially with physical robots or other hardware, please read the [SAFETY.md].
+Before using this software, especially with physical robots or other hardware, please read the [Safety Guide](SAFETY.md).
 
 # Authors
 
 * **Marco Negrete** - [BioRobotics UNAM](https://biorobotics.fi-p.unam.mx/)
 * **Luis Contreras** - [AIBot](http://aibot.jp/)
+
+# Co-Developper
+* **Ryohei Kobayashi** - [Kyushu Institute of Technology](https://www.brain.kyutech.ac.jp/~tamukoh/en/)
