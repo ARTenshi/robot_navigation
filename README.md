@@ -2,7 +2,7 @@
 
 Service robots are intended to help humans in non-industrial environments such as houses or offices. To accomplish their goal, service robots must have several skills such as object recognition and manipulation, face detection and recognition, speech recognition and synthesis, task planning and, one of the most important, navigation in dynamic environments. This repository describes a fully implemented motion-planning system that comprehends from motion and path planning algorithms to spatial representation and behavior-based active navigation.
 
-This paper can be consulted online for free at this [link](https://bit.ly/40YEcZR). The following video shows this system working at RoboCup where we have won the **Smoothest, Safest Navigation Award** in 2022 and 2023.
+This paper can be consulted online for free at this [link](https://bit.ly/40YEcZR). The following video shows this system working at RoboCup where we have won the **Smoothest, Safest Navigation Award** in 2022 ~ 2025.
 
 [![Watch the video](https://img.youtube.com/vi/s2g95Y9Me3c/hqdefault.jpg)](https://www.youtube.com/embed/s2g95Y9Me3c)
 
@@ -19,6 +19,9 @@ pages		= {5--38},
 year		= {2018}
 }
 ```
+
+In RoboCup2024 and RoboCup2025 
+Also please cite this:
 
 # Setup
 
@@ -166,6 +169,9 @@ year		= {2012}
 ```
 
 You can download it at the following [link](https://web.siia.unam.mx/siia-publico/v/include/modulo_productos/tesis.php?id=858286) (click on *URL: Ver Tesis*).
+
+# Safty Notice and Disclaimer
+Before using this software, especially with physical robots or other hardware, please read the [SAFETY.md].
 
 # Authors
 
