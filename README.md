@@ -7,7 +7,7 @@ This paper can be consulted online for free at this [link](https://bit.ly/40YEcZ
 
 [![Watch the video](https://img.youtube.com/vi/s2g95Y9Me3c/hqdefault.jpg)](https://www.youtube.com/embed/s2g95Y9Me3c)
 
-Also we have ROS2 humble/jazzy version [here](https://github.com/artenshi/pumas_nav2).
+
 
 Please, if you use this material, don't forget to add the following reference:
 
@@ -23,6 +23,8 @@ year		= {2018}
 }
 ```
 
+
+
 In RoboCup2024 and RoboCup2025 development result do you want to use (ryohei/devel/rc25 branch)
 Also please cite this:
 ```
@@ -33,6 +35,20 @@ journal		= {{arXiv preprint arXiv:2511.20180}},
 year		= {2025}
 }
 ```
+
+
+Also we have ROS2 humble/jazzy version [here](https://github.com/artenshi/pumas_nav2).
+The ROS2 version details are described in:
+
+```
+@article{contreras:2025,
+author 		= {Luis Contreras and Marco Negrete and Tomoaki Yoshiaki and Yuichiro Hirose and Hiroyuki Okada},
+title 		= {{A Motion Planning Framework for Multi-Robot Navigation in ROS 2}},
+journal		= {{RSJ 2025}},
+year		= {2025}
+}
+```
+
 
 # Setup
 
@@ -188,6 +204,4 @@ Before using this software, especially with physical robots or other hardware, p
 
 * **Marco Negrete** - [BioRobotics UNAM](https://biorobotics.fi-p.unam.mx/)
 * **Luis Contreras** - [AIBot](http://aibot.jp/)
-
-# Co-Developper
 * **Ryohei Kobayashi** - [Kyushu Institute of Technology](https://www.brain.kyutech.ac.jp/~tamukoh/en/)
