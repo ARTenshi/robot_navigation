@@ -25,8 +25,8 @@ year		= {2018}
 
 
 
-In RoboCup2024 and RoboCup2025 development result by Ryohei Kobayashi. do you want to use (ry0hei/devel/rc25 branch)
-Also please cite this:
+The RoboCup2024 and RoboCup2025 development results by Ryohei Kobayashi are available in the `ry0hei/devel/rc25` branch.
+If you use it, please also cite this:
 ```
 @article{kobayashi:2025,
 author 		= {Ryohei Kobayashi and Kosei Isomoto and Kosei Yamao and Soma Fumoto and Koshun Arimura and Naoki Yamaguchi and Akinobu Mizutani and Tomoya Shiba and Kouki Kimizuka and Yuta Ohno and Ryo Terashima and Hiromasa Yamaguchi and Tomoaki Fujino and Ryoga Maruno and Wataru Yoshimura and Kazuhito Mine and Tang Phu Thien Nhan and Yuga Yano and Yuichiro Tanaka and Takeshi Nishida and Takashi Morie and Hakaru Tamukoh},
