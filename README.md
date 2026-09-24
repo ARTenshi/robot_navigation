@@ -25,7 +25,7 @@ year		= {2018}
 
 
 
-In RoboCup2024 and RoboCup2025 development result do you want to use (ryohei/devel/rc25 branch)
+In RoboCup2024 and RoboCup2025 development result by Ryohei Kobayashi. do you want to use (ry0hei/devel/rc25 branch)
 Also please cite this:
 ```
 @article{kobayashi:2025,
@@ -197,7 +197,7 @@ year		= {2012}
 
 You can download it at the following [link](https://web.siia.unam.mx/siia-publico/v/include/modulo_productos/tesis.php?id=858286) (click on *URL: Ver Tesis*).
 
-# Safty Notice and Disclaimer
+# Safety Notice and Disclaimer
 Before using this software, especially with physical robots or other hardware, please read the [Safety Guide](SAFETY.md).
 
 # Authors
