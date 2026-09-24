@@ -198,6 +198,7 @@ year		= {2012}
 You can download it at the following [link](https://web.siia.unam.mx/siia-publico/v/include/modulo_productos/tesis.php?id=858286) (click on *URL: Ver Tesis*).
 
 # Safety Notice and Disclaimer
+
 Before using this software, especially with physical robots or other hardware, please read the [Safety Guide](SAFETY.md).
 
 # Authors
